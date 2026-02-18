@@ -3,39 +3,63 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>IDLE ARENA RPG</title>
+<title>IDLE ARENA INDIE</title>
 
 <style>
+
+/* ================= GLOBAL ================= */
+
 *{
     margin:0;
     padding:0;
     box-sizing:border-box;
-    font-family:monospace;
+    font-family: monospace;
 }
 
 body{
-    background:#000;
+    background:#05070d;
     overflow:hidden;
-    color:#fff;
+    color:white;
 }
 
 canvas{
-    display:block;
-    background:#111;
+    position:absolute;
+    top:0;
+    left:0;
+    z-index:1;
 }
 
-#topUI{
+/* ================= BACKGROUND ================= */
+
+#bgLayer{
+    position:absolute;
+    width:100%;
+    height:100%;
+    background: radial-gradient(circle at center, #111827 0%, #030712 70%);
+    z-index:0;
+}
+
+/* ================= HUD ================= */
+
+#hud{
     position:absolute;
     top:10px;
     left:10px;
     z-index:10;
-    background:rgba(0,0,0,0.6);
-    padding:10px;
-    border-radius:8px;
+    background:rgba(0,0,0,0.5);
+    padding:12px;
+    border-radius:10px;
+    min-width:200px;
+}
+
+.statRow{
+    margin-bottom:5px;
     font-size:14px;
 }
 
-#menuButtons{
+/* ================= TOP BUTTONS ================= */
+
+#topButtons{
     position:absolute;
     top:10px;
     right:10px;
@@ -45,126 +69,243 @@ canvas{
 }
 
 button{
+    background:#111;
+    border:1px solid #333;
+    color:white;
     padding:8px 12px;
-    background:#222;
-    border:1px solid #555;
-    color:#fff;
-    cursor:pointer;
     border-radius:6px;
+    cursor:pointer;
 }
 
 button:hover{
-    background:#333;
+    background:#222;
 }
 
-.panel{
+/* ================= MODAL ================= */
+
+.modal{
     position:absolute;
     top:50%;
     left:50%;
-    transform:translate(-50%, -50%);
-    width:80%;
-    max-width:500px;
-    background:#111;
-    border:2px solid #444;
-    padding:20px;
+    transform:translate(-50%,-50%);
+    width:90%;
+    max-width:700px;
+    height:80%;
+    background:#0f172a;
+    border:2px solid #334155;
+    border-radius:10px;
+    z-index:50;
     display:none;
+    flex-direction:column;
+}
+
+.modalHeader{
+    padding:15px;
+    border-bottom:1px solid #334155;
+    font-size:18px;
+}
+
+.modalContent{
+    flex:1;
+    overflow-y:auto;
+    padding:15px;
+}
+
+.modalFooter{
+    padding:10px;
+    border-top:1px solid #334155;
+    text-align:right;
+}
+
+/* ================= BOOK CARD ================= */
+
+.bookCard{
+    background:#1e293b;
+    border:1px solid #334155;
+    padding:10px;
+    margin-bottom:10px;
+    border-radius:6px;
+}
+
+.bookTitle{
+    font-size:16px;
+    margin-bottom:5px;
+}
+
+.bookDesc{
+    font-size:13px;
+    opacity:0.8;
+}
+
+/* rarity colors */
+
+.common{ border-left:4px solid gray; }
+.rare{ border-left:4px solid #3b82f6; }
+.epic{ border-left:4px solid #a855f7; }
+.legendary{ border-left:4px solid gold; }
+
+/* ================= SHOP ITEM ================= */
+
+.shopItem{
+    background:#111827;
+    border:1px solid #334155;
+    padding:10px;
+    margin-bottom:10px;
+    border-radius:6px;
+}
+
+.shopTitle{
+    font-size:15px;
+}
+
+.shopDesc{
+    font-size:12px;
+    opacity:0.7;
+}
+
+/* ================= ACHIEVEMENT ================= */
+
+.achievement{
+    background:#0f172a;
+    border:1px solid #334155;
+    padding:10px;
+    margin-bottom:10px;
+    border-radius:6px;
+}
+
+.progressBar{
+    width:100%;
+    height:8px;
+    background:#1e293b;
+    border-radius:4px;
+    margin-top:5px;
+}
+
+.progressFill{
+    height:8px;
+    background:#22c55e;
+    width:0%;
+    border-radius:4px;
+}
+
+/* ================= FLOATING DAMAGE ================= */
+
+#floatingTexts{
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
     z-index:20;
 }
 
-.panel h2{
-    margin-bottom:15px;
+.floatingText{
+    position:absolute;
+    font-size:14px;
+    font-weight:bold;
+    animation:floatUp 1s forwards;
 }
 
-.book-option{
-    background:#222;
-    padding:10px;
-    margin-bottom:10px;
-    cursor:pointer;
-    border:1px solid #444;
+@keyframes floatUp{
+    0%{opacity:1; transform:translateY(0);}
+    100%{opacity:0; transform:translateY(-40px);}
 }
 
-.book-option:hover{
-    background:#333;
+/* ================= RESPONSIVE ================= */
+
+@media (max-width:600px){
+    #hud{
+        font-size:12px;
+    }
+    button{
+        padding:6px 8px;
+    }
 }
+
 </style>
 </head>
 <body>
 
-<canvas id="game"></canvas>
+<div id="bgLayer"></div>
+<canvas id="gameCanvas"></canvas>
+<div id="floatingTexts"></div>
 
-<!-- ÜST BİLGİ -->
-<div id="topUI">
-    <div>Stage: <span id="uiStage">1</span></div>
-    <div>Wave: <span id="uiWave">1</span></div>
-    <div>Level: <span id="uiLevel">1</span></div>
-    <div>XP: <span id="uiXP">0</span></div>
-    <div>Gold: <span id="uiGold">0</span></div>
-    <div>Souls: <span id="uiSouls">0</span></div>
+<!-- ================= HUD ================= -->
+
+<div id="hud">
+    <div class="statRow">Stage: <span id="uiStage">1</span></div>
+    <div class="statRow">Wave: <span id="uiWave">1</span></div>
+    <div class="statRow">Level: <span id="uiLevel">1</span></div>
+    <div class="statRow">XP: <span id="uiXP">0</span></div>
+    <div class="statRow">Gold: <span id="uiGold">0</span></div>
+    <div class="statRow">Souls: <span id="uiSouls">0</span></div>
+    <div class="statRow">Damage: <span id="uiDamage">0</span></div>
+    <div class="statRow">Attack Speed: <span id="uiSpeed">0</span></div>
+    <div class="statRow">Crit Chance: <span id="uiCrit">0%</span></div>
 </div>
 
-<!-- MENÜ BUTONLARI -->
-<div id="menuButtons">
-    <button onclick="openAchievements()">Achievements</button>
-    <button onclick="openRebirth()">Rebirth</button>
+<!-- ================= TOP BUTTONS ================= -->
+
+<div id="topButtons">
+    <button onclick="UI.openGoldShop()">Gold Shop</button>
+    <button onclick="UI.openRebirthShop()">Rebirth Shop</button>
+    <button onclick="UI.openAchievements()">Achievements</button>
+    <button onclick="UI.openCharacter()">Character</button>
+    <button onclick="UI.openBooks()">Books</button>
 </div>
 
-<!-- KİTAP SEÇİM PANELİ -->
-<div id="bookPanel" class="panel">
-    <h2>Level Up - Kitap Seç</h2>
-    <div id="bookOptions"></div>
-</div>
+<!-- ================= GOLD SHOP ================= -->
 
-<!-- ACHIEVEMENT PANEL -->
-<div id="achievementPanel" class="panel">
-    <h2>Achievements</h2>
-    <div id="achievementList">
-        <!-- Aşama 2'de doldurulacak -->
-        Yakında...
+<div id="goldShop" class="modal">
+    <div class="modalHeader">Gold Shop (Run)</div>
+    <div class="modalContent" id="goldShopContent"></div>
+    <div class="modalFooter">
+        <button onclick="UI.closeAll()">Kapat</button>
     </div>
-    <br>
-    <button onclick="closeAchievements()">Kapat</button>
 </div>
 
-<!-- REBIRTH PANEL -->
-<div id="rebirthPanel" class="panel">
-    <h2>Rebirth</h2>
-    <div>
-        Rebirth yaptığında:
-        <ul>
-            <li>Stage resetlenir</li>
-            <li>Wave resetlenir</li>
-            <li>Level resetlenir</li>
-        </ul>
+<!-- ================= REBIRTH SHOP ================= -->
+
+<div id="rebirthShop" class="modal">
+    <div class="modalHeader">Rebirth Shop (Permanent)</div>
+    <div class="modalContent" id="rebirthShopContent"></div>
+    <div class="modalFooter">
+        <button onclick="UI.closeAll()">Kapat</button>
     </div>
-    <br>
-    <button onclick="confirmRebirth()">Rebirth Yap</button>
-    <button onclick="closeRebirth()">Kapat</button>
 </div>
 
-<script>
-// UI open close basic (Aşama 1 için placeholder)
+<!-- ================= ACHIEVEMENTS ================= -->
 
-function openAchievements(){
-    document.getElementById("achievementPanel").style.display="block";
-}
+<div id="achievementPanel" class="modal">
+    <div class="modalHeader">Achievements</div>
+    <div class="modalContent" id="achievementContent"></div>
+    <div class="modalFooter">
+        <button onclick="UI.closeAll()">Kapat</button>
+    </div>
+</div>
 
-function closeAchievements(){
-    document.getElementById("achievementPanel").style.display="none";
-}
+<!-- ================= CHARACTER PANEL ================= -->
 
-function openRebirth(){
-    document.getElementById("rebirthPanel").style.display="block";
-}
+<div id="characterPanel" class="modal">
+    <div class="modalHeader">Character Select</div>
+    <div class="modalContent" id="characterContent"></div>
+    <div class="modalFooter">
+        <button onclick="UI.closeAll()">Kapat</button>
+    </div>
+</div>
 
-function closeRebirth(){
-    document.getElementById("rebirthPanel").style.display="none";
-}
+<!-- ================= BOOK INVENTORY ================= -->
 
-function confirmRebirth(){
-    alert("Rebirth sistemi Aşama 2'de aktif olacak.");
-}
-</script>
+<div id="bookPanel" class="modal">
+    <div class="modalHeader">Active Books</div>
+    <div class="modalContent" id="bookContent"></div>
+    <div class="modalFooter">
+        <button onclick="UI.closeAll()">Kapat</button>
+    </div>
+</div>
 
+<script src="ui.js"></script>
 <script src="game.js"></script>
 
 </body>

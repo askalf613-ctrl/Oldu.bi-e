@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>IDLE ARENA RPG</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:monospace;
+}
+
+body{
+    background:#000;
+    overflow:hidden;
+    color:#fff;
+}
+
+canvas{
+    display:block;
+    background:#111;
+}
+
+#topUI{
+    position:absolute;
+    top:10px;
+    left:10px;
+    z-index:10;
+    background:rgba(0,0,0,0.6);
+    padding:10px;
+    border-radius:8px;
+    font-size:14px;
+}
+
+#menuButtons{
+    position:absolute;
+    top:10px;
+    right:10px;
+    z-index:10;
+    display:flex;
+    gap:10px;
+}
+
+button{
+    padding:8px 12px;
+    background:#222;
+    border:1px solid #555;
+    color:#fff;
+    cursor:pointer;
+    border-radius:6px;
+}
+
+button:hover{
+    background:#333;
+}
+
+.panel{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    width:80%;
+    max-width:500px;
+    background:#111;
+    border:2px solid #444;
+    padding:20px;
+    display:none;
+    z-index:20;
+}
+
+.panel h2{
+    margin-bottom:15px;
+}
+
+.book-option{
+    background:#222;
+    padding:10px;
+    margin-bottom:10px;
+    cursor:pointer;
+    border:1px solid #444;
+}
+
+.book-option:hover{
+    background:#333;
+}
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<!-- ÜST BİLGİ -->
+<div id="topUI">
+    <div>Stage: <span id="uiStage">1</span></div>
+    <div>Wave: <span id="uiWave">1</span></div>
+    <div>Level: <span id="uiLevel">1</span></div>
+    <div>XP: <span id="uiXP">0</span></div>
+    <div>Gold: <span id="uiGold">0</span></div>
+    <div>Souls: <span id="uiSouls">0</span></div>
+</div>
+
+<!-- MENÜ BUTONLARI -->
+<div id="menuButtons">
+    <button onclick="openAchievements()">Achievements</button>
+    <button onclick="openRebirth()">Rebirth</button>
+</div>
+
+<!-- KİTAP SEÇİM PANELİ -->
+<div id="bookPanel" class="panel">
+    <h2>Level Up - Kitap Seç</h2>
+    <div id="bookOptions"></div>
+</div>
+
+<!-- ACHIEVEMENT PANEL -->
+<div id="achievementPanel" class="panel">
+    <h2>Achievements</h2>
+    <div id="achievementList">
+        <!-- Aşama 2'de doldurulacak -->
+        Yakında...
+    </div>
+    <br>
+    <button onclick="closeAchievements()">Kapat</button>
+</div>
+
+<!-- REBIRTH PANEL -->
+<div id="rebirthPanel" class="panel">
+    <h2>Rebirth</h2>
+    <div>
+        Rebirth yaptığında:
+        <ul>
+            <li>Stage resetlenir</li>
+            <li>Wave resetlenir</li>
+            <li>Level resetlenir</li>
+        </ul>
+    </div>
+    <br>
+    <button onclick="confirmRebirth()">Rebirth Yap</button>
+    <button onclick="closeRebirth()">Kapat</button>
+</div>
+
+<script>
+// UI open close basic (Aşama 1 için placeholder)
+
+function openAchievements(){
+    document.getElementById("achievementPanel").style.display="block";
+}
+
+function closeAchievements(){
+    document.getElementById("achievementPanel").style.display="none";
+}
+
+function openRebirth(){
+    document.getElementById("rebirthPanel").style.display="block";
+}
+
+function closeRebirth(){
+    document.getElementById("rebirthPanel").style.display="none";
+}
+
+function confirmRebirth(){
+    alert("Rebirth sistemi Aşama 2'de aktif olacak.");
+}
+</script>
+
+<script src="game.js"></script>
+
+</body>
+</html>

@@ -1,274 +1,132 @@
-// =============================
-// IDLE ASCENSION V3 CORE
-// =============================
+// =====================
+// CORE FIXED ENGINE
+// =====================
 
-const SAVE_VERSION = 3;
 const FPS = 30;
-const FRAME_TIME = 1000 / FPS;
+const FRAME = 1000 / FPS;
 
-let canvas = document.getElementById("gameCanvas");
-let ctx = canvas.getContext("2d");
+let enemyHP = 10;
+let clickBoost = 0;
+let clickTimer = 0;
 
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+function baseDamage(){
+    return 1 + (game.shops.damage * 0.15);
 }
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
 
-// =============================
-// GAME STATE
-// =============================
+function totalDamage(){
+    let dmg = baseDamage();
+    dmg *= (1 + (game.itemBonus?.damage || 0));
+    dmg *= (1 + clickBoost);
+    return dmg;
+}
 
-let game = {
-    gold: 0,
-    level: 1,
-    wave: 1,
-    xp: 0,
-    xpToNext: 10,
+function getDPS(){
+    let speed = 1 + (game.shops.attackSpeed * 0.1);
+    return totalDamage() * speed;
+}
 
-    prestigeCount: 0,
-    prestigeCurrency: 0,
+function spawnEnemy(){
+    enemyHP = 10 * Math.pow(1.15, game.wave);
+}
 
-    world: 1,
+function killEnemy(){
+    let reward = enemyHP * 0.6;
+    game.gold += reward;
+    game.wave++;
+    game.totalKills++;
+    spawnEnemy();
+}
 
-    totalKills: 0,
-    totalPlayTime: 0,
+function update(delta){
 
-    maxGold: 0,
-    maxLevel: 1,
+    // AUTO ATTACK
+    enemyHP -= getDPS() * (delta/1000);
 
-    lastSaveTime: Date.now(),
-
-    shops: {
-        damage: 0,
-        gold: 0,
-        xp: 0,
-        crit: 0,
-        critDmg: 0,
-        attackSpeed: 0,
-        boss: 0,
-        idle: 0,
-        hpReduce: 0
-    },
-
-    prestigeShop: {
-        goldMulti: 0,
-        xpMulti: 0,
-        offlineTime: 0
+    if(enemyHP <= 0){
+        killEnemy();
     }
-};
 
-// =============================
-// SAVE SYSTEM
-// =============================
-
-function saveGame() {
-    game.lastSaveTime = Date.now();
-    localStorage.setItem("idleAscensionSave", JSON.stringify({
-        version: SAVE_VERSION,
-        data: game
-    }));
-}
-
-function loadGame() {
-    let raw = localStorage.getItem("idleAscensionSave");
-    if (!raw) return;
-
-    try {
-        let parsed = JSON.parse(raw);
-        if (parsed.version === SAVE_VERSION) {
-            game = parsed.data;
+    // CLICK BOOST TIMER
+    if(clickTimer > 0){
+        clickTimer -= delta;
+        if(clickTimer <= 0){
+            clickBoost = 0;
         }
-    } catch (e) {
-        console.log("Save bozuk, sıfırlanıyor.");
-    }
-}
-
-function resetSave() {
-    localStorage.removeItem("idleAscensionSave");
-    location.reload();
-}
-
-function manualSave() {
-    saveGame();
-}
-
-function exportSave() {
-    saveGame();
-    document.getElementById("saveData").value =
-        btoa(JSON.stringify({
-            version: SAVE_VERSION,
-            data: game
-        }));
-}
-
-function importSave() {
-    try {
-        let data = atob(document.getElementById("saveData").value);
-        localStorage.setItem("idleAscensionSave", data);
-        location.reload();
-    } catch {
-        alert("Hatalı save");
-    }
-}
-
-// =============================
-// OFFLINE GAIN
-// =============================
-
-function handleOffline() {
-    let now = Date.now();
-    let diff = (now - game.lastSaveTime) / 1000;
-
-    let maxOffline = 7200 + (game.prestigeShop.offlineTime * 3600);
-    if (diff > maxOffline) diff = maxOffline;
-
-    let gain = getDPS() * diff;
-    game.gold += gain;
-}
-
-// =============================
-// FORMULAS
-// =============================
-
-function getGoldMultiplier() {
-    return 1 +
-        (game.shops.gold * 0.15) +
-        (game.prestigeShop.goldMulti * 0.25) +
-        (game.prestigeCount * 0.25);
-}
-
-function getXPMultiplier() {
-    return 1 +
-        (game.shops.xp * 0.15) +
-        (game.prestigeShop.xpMulti * 0.25) +
-        (game.prestigeCount * 0.25);
-}
-
-function getDamage() {
-    return (1 + game.shops.damage * 0.15) *
-        (1 + game.shops.idle * 0.2);
-}
-
-function getDPS() {
-    return getDamage() * (1 + game.wave * 0.05);
-}
-
-function getEnemyHP() {
-    let base = 10 * Math.pow(1.15, game.wave);
-    let reduce = Math.min(game.shops.hpReduce * 0.10, 0.70);
-    return base * (1 - reduce);
-}
-
-function getGoldReward() {
-    let base = getEnemyHP() * 0.5;
-    return base * getGoldMultiplier();
-}
-
-// =============================
-// GAME LOOP
-// =============================
-
-let lastFrame = 0;
-let enemyHP = getEnemyHP();
-
-function update(delta) {
-
-    game.totalPlayTime += delta / 1000;
-
-    let dps = getDPS();
-    enemyHP -= dps * (delta / 1000);
-
-    if (enemyHP <= 0) {
-        game.gold += getGoldReward();
-        game.totalKills++;
-        game.wave++;
-
-        enemyHP = getEnemyHP();
     }
 
     // XP
-    game.xp += delta / 1000 * getXPMultiplier();
-    if (game.xp >= game.xpToNext) {
+    game.xp += delta/1000;
+    if(game.xp >= game.xpToNext){
         game.level++;
         game.xp = 0;
-        game.xpToNext *= 1.2;
+        game.xpToNext *= 1.25;
     }
-
-    if (game.gold > game.maxGold) game.maxGold = game.gold;
-    if (game.level > game.maxLevel) game.maxLevel = game.level;
 }
 
-function draw() {
+function draw(){
+
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // background
-    let gradient = ctx.createRadialGradient(
-        canvas.width/2,
-        canvas.height/2,
-        50,
-        canvas.width/2,
-        canvas.height/2,
-        canvas.width
-    );
-    gradient.addColorStop(0,"#111122");
-    gradient.addColorStop(1,"#000000");
-    ctx.fillStyle = gradient;
+    // Gradient background
+    let g = ctx.createLinearGradient(0,0,0,canvas.height);
+    g.addColorStop(0,"#0a0a1f");
+    g.addColorStop(1,"#000");
+    ctx.fillStyle = g;
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    // player (center)
+    // Ground glow
+    ctx.fillStyle = "rgba(0,255,255,0.05)";
+    ctx.fillRect(0,canvas.height*0.6,canvas.width,canvas.height);
+
+    // PLAYER (center)
+    ctx.shadowColor = "cyan";
+    ctx.shadowBlur = 30;
     ctx.fillStyle = "cyan";
     ctx.beginPath();
-    ctx.arc(canvas.width/2, canvas.height/2, 20, 0, Math.PI*2);
+    ctx.arc(canvas.width/2, canvas.height/2, 30, 0, Math.PI*2);
     ctx.fill();
+    ctx.shadowBlur = 0;
 
-    // enemy hp bar
+    // ENEMY HP BAR
     ctx.fillStyle="red";
-    ctx.fillRect(20, canvas.height/2 - 5, (enemyHP/getEnemyHP())*200,10);
+    ctx.fillRect(
+        canvas.width/2 - 150,
+        canvas.height/2 - 100,
+        (enemyHP / (10*Math.pow(1.15,game.wave))) * 300,
+        15
+    );
+
+    // Floating particles
+    for(let i=0;i<20;i++){
+        ctx.fillStyle="rgba(255,255,255,0.02)";
+        ctx.fillRect(Math.random()*canvas.width,Math.random()*canvas.height,2,2);
+    }
+
+    document.getElementById("gold").innerText = Math.floor(game.gold);
+    document.getElementById("level").innerText = game.level;
+    document.getElementById("wave").innerText = game.wave;
+    document.getElementById("dps").innerText = getDPS().toFixed(1);
 }
 
-function gameLoop(timestamp) {
-    if (!lastFrame) lastFrame = timestamp;
-    let delta = timestamp - lastFrame;
+let last = 0;
+function loop(t){
+    if(!last) last = t;
+    let delta = t - last;
 
-    if (delta >= FRAME_TIME) {
+    if(delta >= FRAME){
         update(delta);
         draw();
-        lastFrame = timestamp;
+        last = t;
     }
-
-    requestAnimationFrame(gameLoop);
+    requestAnimationFrame(loop);
 }
 
-// =============================
-// PRESTIGE
-// =============================
+// CLICK BOOST
+canvas.addEventListener("click",()=>{
+    clickBoost += 0.2;
+    clickTimer = 2000; // 2 saniye boost
+});
 
-function tryPrestige() {
-    let required = 25 * Math.pow(2, game.prestigeCount);
-    if (game.level >= required) {
-        game.prestigeCount++;
-        game.prestigeCurrency++;
-
-        game.level = 1;
-        game.wave = 1;
-        game.xp = 0;
-        game.gold = 0;
-        game.xpToNext = 10;
-    }
-}
-
-// =============================
 // INIT
-// =============================
-
-function startGame() {
-    document.getElementById("mainMenu").style.display="none";
-    loadGame();
-    handleOffline();
-    setInterval(saveGame,10000);
-    requestAnimationFrame(gameLoop);
-}
-
-loadGame();
+spawnEnemy();
+requestAnimationFrame(loop);

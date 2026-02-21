@@ -1,207 +1,110 @@
-// =============================
-// UI UPDATE LOOP
-// =============================
-
-function format(num){
-    if(num >= 1e12) return (num/1e12).toFixed(2)+"T";
-    if(num >= 1e9) return (num/1e9).toFixed(2)+"B";
-    if(num >= 1e6) return (num/1e6).toFixed(2)+"M";
-    if(num >= 1e3) return (num/1e3).toFixed(2)+"K";
+// ui.js - Shoplar, Modallar, HUD
+function format(num) {
+    if(num>=1e9) return (num/1e9).toFixed(2)+"B";
+    if(num>=1e6) return (num/1e6).toFixed(2)+"M";
+    if(num>=1e3) return (num/1e3).toFixed(1)+"K";
     return Math.floor(num);
 }
 
-function updateUI(){
+function updateHUD() {
+    document.getElementById("goldText").innerText = format(game.gold);
+    document.getElementById("levelText").innerText = game.level;
+    document.getElementById("waveText").innerText = game.wave;
+    document.getElementById("dpsText").innerText = format(getDPS());
+    document.getElementById("worldText").innerText = WORLDS[game.world].name;
+}
+setInterval(updateHUD, 150);
 
-    document.getElementById("gold").innerText = format(game.gold);
-    document.getElementById("level").innerText = game.level;
-    document.getElementById("wave").innerText = game.wave;
-    document.getElementById("prestigeCount").innerText = game.prestigeCount;
-    document.getElementById("world").innerText = game.world;
-
-    updateShopUI();
-    updatePrestigeUI();
+function openModal(id) {
+    document.querySelectorAll('.modal').forEach(m => m.style.display='none');
+    document.getElementById(id).style.display = 'flex';
+    if(id==='goldShop') renderGoldShop();
+    if(id==='prestigeShop') renderPrestigeShop();
+    if(id==='worldModal') renderWorlds();
 }
 
-setInterval(updateUI,200);
-
-// =============================
-// GOLD SHOP
-// =============================
-
-const goldShopData = {
-    damage:{base:50,scale:1.35},
-    gold:{base:75,scale:1.35},
-    xp:{base:80,scale:1.35},
-    crit:{base:120,scale:1.35},
-    critDmg:{base:150,scale:1.35},
-    attackSpeed:{base:100,scale:1.35},
-    boss:{base:200,scale:1.35},
-    idle:{base:90,scale:1.35},
-    hpReduce:{base:300,scale:1.35}
-};
-
-function getShopCost(key){
-    let lvl = game.shops[key];
-    return goldShopData[key].base * Math.pow(goldShopData[key].scale,lvl);
+function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
 }
 
-function buyShop(key){
-    let cost = getShopCost(key);
-    if(game.gold >= cost){
-        game.gold -= cost;
-        game.shops[key]++;
-    }
-}
-
-function updateShopUI(){
-
-    for(let key in goldShopData){
-        let btn = document.getElementById("shop_"+key);
-        if(!btn) continue;
-
-        let cost = getShopCost(key);
-        btn.innerText = key.toUpperCase() +
-            " Lv."+game.shops[key]+
-            " | "+format(cost);
-    }
-}
-
-// =============================
-// PRESTIGE SHOP
-// =============================
-
-const prestigeShopData = {
-    goldMulti:{base:1,scale:1.6},
-    xpMulti:{base:1,scale:1.6},
-    offlineTime:{base:2,scale:1.6}
-};
-
-function getPrestigeCost(key){
-    let lvl = game.prestigeShop[key];
-    return prestigeShopData[key].base * Math.pow(prestigeShopData[key].scale,lvl);
-}
-
-function buyPrestige(key){
-    let cost = getPrestigeCost(key);
-    if(game.prestigeCurrency >= cost){
-        game.prestigeCurrency -= cost;
-        game.prestigeShop[key]++;
-    }
-}
-
-function updatePrestigeUI(){
-
-    for(let key in prestigeShopData){
-        let btn = document.getElementById("prestige_"+key);
-        if(!btn) continue;
-
-        let cost = getPrestigeCost(key);
-        btn.innerText = key.toUpperCase()+
-            " Lv."+game.prestigeShop[key]+
-            " | "+format(cost);
-    }
-}
-
-// =============================
-// WORLD SYSTEM
-// =============================
-
-function tryUnlockWorld(){
-
-    if(game.world === 1 && game.level >= 100){
-        game.world = 2;
-    }
-
-    if(game.world === 2 && game.level >= 250){
-        game.world = 3;
-    }
-}
-
-setInterval(tryUnlockWorld,1000);
-
-// =============================
-// MENU CONTROL
-// =============================
-
-function openMenu(){
-    document.getElementById("menu").style.display="block";
-}
-
-function closeMenu(){
-    document.getElementById("menu").style.display="none";
-}
-
-function openShop(){
-    document.getElementById("shopPanel").style.display="block";
-}
-
-function closeShop(){
-    document.getElementById("shopPanel").style.display="none";
-}
-
-function openPrestige(){
-    document.getElementById("prestigePanel").style.display="block";
-}
-
-function closePrestige(){
-    document.getElementById("prestigePanel").style.display="none";
-}
-
-// =============================
-// ACHIEVEMENTS
-// =============================
-
-let achievements = [
-    {id:1,name:"100 Kill",check:()=>game.totalKills>=100,done:false},
-    {id:2,name:"1M Gold",check:()=>game.maxGold>=1e6,done:false},
-    {id:3,name:"Level 200",check:()=>game.maxLevel>=200,done:false},
-    {id:4,name:"10 Prestige",check:()=>game.prestigeCount>=10,done:false}
+// Gold Shop (9 seçenek - HP reduce dahil)
+const goldShopData = [
+    {key:"damage", name:"Damage", desc:"+22% Damage", base:55, scale:1.33},
+    {key:"gold", name:"Gold Multi", desc:"+18% Gold", base:70, scale:1.34},
+    {key:"xp", name:"XP Multi", desc:"+15% XP", base:65, scale:1.33},
+    {key:"crit", name:"Crit Chance", desc:"+3% Crit", base:100, scale:1.35},
+    {key:"critDmg", name:"Crit Damage", desc:"+40% Crit Dmg", base:130, scale:1.36},
+    {key:"attackSpeed", name:"Attack Speed", desc:"+12% Hız", base:90, scale:1.33},
+    {key:"hpReduce", name:"Enemy HP Reduce", desc:"-9% Canavar HP", base:180, scale:1.38},
+    {key:"idle", name:"Idle Multi", desc:"+25% Idle", base:110, scale:1.35},
+    {key:"waveGold", name:"Wave Gold Bonus", desc:"+10% Wave Gold", base:140, scale:1.37}
 ];
 
-function checkAchievements(){
-    achievements.forEach(a=>{
-        if(!a.done && a.check()){
-            a.done = true;
-            alert("Achievement Unlocked: "+a.name);
-        }
+function getShopCost(item) {
+    return Math.floor(item.base * Math.pow(item.scale, game.shops[item.key]));
+}
+
+function buyShop(key) {
+    let item = goldShopData.find(i=>i.key===key);
+    let cost = getShopCost(item);
+    if (game.gold >= cost) {
+        game.gold -= cost;
+        game.shops[key]++;
+        renderGoldShop();
+    }
+}
+
+function renderGoldShop() {
+    let html = "";
+    goldShopData.forEach(item => {
+        let cost = getShopCost(item);
+        html += `<div class="shop-item">
+            <div><b>\( {item.name}</b><br><small> \){item.desc}</small><br>Lv.${game.shops[item.key]}</div>
+            <button class="btn" onclick="buyShop('\( {item.key}')"> \){format(cost)} Gold</button>
+        </div>`;
     });
+    document.getElementById("goldShopContent").innerHTML = html;
 }
 
-setInterval(checkAchievements,2000);
-
-// =============================
-// STATS PANEL
-// =============================
-
-function updateStats(){
-
-    document.getElementById("stat_kills").innerText = game.totalKills;
-    document.getElementById("stat_time").innerText =
-        Math.floor(game.totalPlayTime)+"s";
-    document.getElementById("stat_maxGold").innerText =
-        format(game.maxGold);
-    document.getElementById("stat_maxLevel").innerText =
-        game.maxLevel;
-    document.getElementById("stat_rebirth").innerText =
-        game.prestigeCount;
+function renderPrestigeShop() {
+    let html = `<h3>Prestige Puanın: ${game.prestigeCurrency}</h3>`;
+    html += `<div class="shop-item"><div>Global Gold Multi<br>Lv.${game.prestigeShop.goldMulti}</div><button class="btn" onclick="buyPrestige('goldMulti')">Satın Al</button></div>`;
+    document.getElementById("prestigeShopContent").innerHTML = html;
 }
 
-setInterval(updateStats,1000);
+function buyPrestige(key) {
+    if (game.prestigeCurrency >= 1) {
+        game.prestigeCurrency--;
+        game.prestigeShop[key]++;
+        renderPrestigeShop();
+    }
+}
 
-// =============================
-// BUTTON BINDINGS
-// =============================
+function renderWorlds() {
+    let html = "";
+    WORLDS.forEach(w => {
+        let locked = game.level < w.unlock ? " (Kilitli)" : "";
+        let active = game.world === w.id ? "style='border:3px solid #0ff'" : "";
+        html += `<div class="shop-item" \( {active} onclick="changeWorld( \){w.id})"><b>\( {w.name}</b> \){locked}</div>`;
+    });
+    document.getElementById("worldContent").innerHTML = html;
+}
 
+// Menu
+function renderMenu() {
+    document.getElementById("menuContent").innerHTML = `
+        <button class="btn" onclick="manualSave()" style="width:100%;margin:10px 0">Kaydet</button>
+        <button class="btn" onclick="resetSave()" style="width:100%;margin:10px 0;background:#600">Sıfırla</button>
+    `;
+}
+function manualSave() { alert("Kaydedildi!"); }
+function resetSave() { if(confirm("Her şey silinecek!")) location.reload(); }
+
+// Global
+window.openModal = openModal;
+window.closeModal = closeModal;
 window.buyShop = buyShop;
 window.buyPrestige = buyPrestige;
 window.tryPrestige = tryPrestige;
-window.openMenu = openMenu;
-window.closeMenu = closeMenu;
-window.openShop = openShop;
-window.closeShop = closeShop;
-window.openPrestige = openPrestige;
-window.closePrestige = closePrestige;
-window.manualSave = manualSave;
-window.exportSave = exportSave;
-window.importSave = importSave;
-window.resetSave = resetSave;
+window.changeWorld = changeWorld;
+window.renderMenu = renderMenu;

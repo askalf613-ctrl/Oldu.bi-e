@@ -1,10 +1,10 @@
-// game.js - Tüm Core + Yeni Özellikler
-const SAVE_VERSION = 7;
+// game.js - Core + Tüm Sistemler (Save, Offline, Combo, World, Item Drop vs.)
+const SAVE_VERSION = 9;
 
 const WORLDS = [
-    {id:0, name:"Earth", multi:1, unlock:1, color:"#44ff44"},
-    {id:1, name:"Inferno", multi:5, unlock:80, color:"#ff4444"},
-    {id:2, name:"Void", multi:25, unlock:300, color:"#aa44ff"}
+    {id:0, name:"🌍 Earth", multi:1, unlockLevel:1, color:"#44ff44"},
+    {id:1, name:"🔥 Inferno", multi:5, unlockLevel:80, color:"#ff4444"},
+    {id:2, name:"🌌 Void", multi:25, unlockLevel:300, color:"#aa44ff"}
 ];
 
 let game = {
@@ -16,10 +16,11 @@ let game = {
     xpToNext: 10,
     prestigeCount: 0,
     prestigeCurrency: 0,
-    clickCombo: 0,
+    combo: 0,
     comboTimer: 0,
     shops: {damage:0, gold:0, xp:0, crit:0, critDmg:0, attackSpeed:0, hpReduce:0, idle:0, waveGold:0},
     prestigeShop: {goldMulti:0, xpMulti:0, permDamage:0},
+    inventory: [],
     lastSaveTime: Date.now()
 };
 
@@ -29,77 +30,97 @@ let lastFrame = 0;
 let canvas, ctx;
 
 function getGoldMulti() {
-    return 1 + game.shops.gold*0.18 + game.prestigeShop.goldMulti*0.35 + game.prestigeCount*0.3 + WORLDS[game.world].multi*0.4 + game.shops.waveGold*0.1*game.wave;
+    return 1 + game.shops.gold*0.18 + game.prestigeShop.goldMulti*0.35 + game.prestigeCount*0.3 + 
+           WORLDS[game.world].multi*0.4 + game.shops.waveGold*0.12*game.wave;
 }
 
 function getDamage() {
-    return 10 * (1 + game.shops.damage*0.22 + game.prestigeShop.permDamage*0.5) * (1 + game.shops.idle*0.25) * (1 + game.clickCombo*0.12);
+    return 12 * (1 + game.shops.damage*0.22 + game.shops.idle*0.25 + game.prestigeShop.permDamage*0.8) * (1 + game.combo*0.15);
 }
 
 function getDPS() {
     let base = getDamage();
-    let crit = 0.05 + game.shops.crit*0.03;
+    let critChance = 0.06 + game.shops.crit*0.03;
     let critMulti = 2 + game.shops.critDmg*0.4;
-    let as = 1 + game.shops.attackSpeed*0.12;
-    return (base*(1-crit) + base*critMulti*crit) * as * (1 + game.wave*0.05);
+    let attackSpeed = 1 + game.shops.attackSpeed*0.12;
+    return (base * (1-critChance) + base * critMulti * critChance) * attackSpeed * (1 + game.wave*0.04);
 }
 
 function getEnemyHP() {
-    let base = 15 * Math.pow(1.13, game.wave);
-    let reduce = Math.min(game.shops.hpReduce * 0.09, 0.75);
-    return base * (1 - reduce) * (1 + game.world * 0.6);
+    let base = 18 * Math.pow(1.12, game.wave);
+    let reduce = Math.min(game.shops.hpReduce * 0.085, 0.72);
+    return base * (1 - reduce) * (1 + game.world * 0.5);
 }
 
 function getGoldReward() {
-    return Math.floor(getEnemyHP() * 0.6 * getGoldMulti());
+    return Math.floor(getEnemyHP() * 0.65 * getGoldMulti());
 }
 
-function tryPrestige() {
-    if (game.level >= 15 + game.prestigeCount * 8) {
-        if (confirm("Prestige yapacak mısın?")) {
-            game.prestigeCurrency += 1 + Math.floor(game.prestigeCount/2);
-            game.prestigeCount++;
-            game.level = 1; game.wave = 1; game.xp = 0; game.gold = Math.floor(game.gold*0.3);
-            game.shops = {damage:0,gold:0,xp:0,crit:0,critDmg:0,attackSpeed:0,hpReduce:0,idle:0,waveGold:0};
-        }
-    } else alert(`Prestige için ${15 + game.prestigeCount*8} level lazım`);
+function saveGame() {
+    game.lastSaveTime = Date.now();
+    localStorage.setItem("idleAscension_v9", JSON.stringify({version: SAVE_VERSION, data: game}));
 }
 
-function changeWorld(newW) {
-    if (game.level >= WORLDS[newW].unlock) {
-        game.world = newW;
-        alert(WORLDS[newW].name + " dünyasına geçtin!");
-        renderWorlds();
+function loadGame() {
+    let raw = localStorage.getItem("idleAscension_v9");
+    if (raw) {
+        try {
+            let parsed = JSON.parse(raw);
+            if (parsed.version === SAVE_VERSION) game = parsed.data;
+        } catch(e) {}
     }
 }
 
+function handleOffline() {
+    let now = Date.now();
+    let diff = (now - game.lastSaveTime) / 1000;
+    let maxOffline = 7200 + game.prestigeShop.goldMulti * 3600;
+    if (diff > maxOffline) diff = maxOffline;
+    let gain = getDPS() * diff * 0.6;
+    game.gold += Math.floor(gain);
+}
+
 function handleClick(x, y) {
-    let cx = canvas.width/2 + 130;
-    let cy = canvas.height/2;
-    if (Math.hypot(x-cx, y-cy) < 70) {
-        enemyHP -= getDamage() * 5;
-        game.clickCombo = Math.min(game.clickCombo + 1, 15);
-        game.comboTimer = 180; // 3 saniye
-        particles.push({x, y, text:"+" + Math.floor(getDamage()*5), life:30, color:"#ff0"});
+    let cx = canvas.width / 2 + 140;
+    let cy = canvas.height / 2;
+    if (Math.hypot(x - cx, y - cy) < 65) {
+        enemyHP -= getDamage() * 6;
+        game.combo = Math.min(game.combo + 1, 20);
+        game.comboTimer = 120;
+        particles.push({x, y, text: "-" + Math.floor(getDamage()*6), life: 35, color: "#ff0"});
     }
 }
 
 function update(delta) {
     game.comboTimer = Math.max(0, game.comboTimer - 1);
-    if (game.comboTimer === 0) game.clickCombo = 0;
+    if (game.comboTimer === 0) game.combo = 0;
 
-    enemyHP -= getDPS() * (delta/1000);
+    enemyHP -= getDPS() * (delta / 1000);
 
     if (enemyHP <= 0) {
-        game.gold += getGoldReward();
+        let reward = getGoldReward();
+        game.gold += reward;
         game.wave++;
-        game.xp += 12 * (1 + game.shops.xp*0.15);
-        if (game.xp >= game.xpToNext) {
+        game.xp += 15 * (1 + game.shops.xp * 0.15);
+        while (game.xp >= game.xpToNext) {
             game.level++;
-            game.xp = 0;
-            game.xpToNext *= 1.22;
+            game.xp -= game.xpToNext;
+            game.xpToNext = Math.floor(game.xpToNext * 1.22);
         }
         enemyHP = getEnemyHP();
+
+        particles.push({x: canvas.width/2 + 160, y: canvas.height/2 - 40, text: "+" + format(reward), life: 70, color: "#ff0"});
+
+        if (Math.random() < 0.28) {
+            let item = {
+                name: ["Kılıç","Balta","Hançer","Mızrak"][Math.floor(Math.random()*4)],
+                stat: "damage",
+                value: 1.2 + Math.random() * 3.5,
+                rarity: Math.random() < 0.15 ? "Rare" : "Common"
+            };
+            game.inventory.push(item);
+            particles.push({x: canvas.width/2, y: canvas.height/2 - 80, text: "ITEM DROP!", life: 50, color: "#0f0"});
+        }
     }
 }
 
@@ -107,38 +128,44 @@ function draw() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     let cx = canvas.width/2, cy = canvas.height/2;
 
-    let grad = ctx.createRadialGradient(cx,cy,30,cx,cy,900);
-    grad.addColorStop(0, WORLDS[game.world].color + "33");
+    let grad = ctx.createRadialGradient(cx,cy,50,cx,cy,Math.max(canvas.width,canvas.height));
+    grad.addColorStop(0, WORLDS[game.world].color + "22");
     grad.addColorStop(1, "#000011");
     ctx.fillStyle = grad;
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    // Player
+    // Player + Kılıç
     ctx.fillStyle = "#0ff";
-    ctx.shadowBlur = 30;
-    ctx.shadowColor = "#0ff";
-    ctx.beginPath(); ctx.arc(cx-110,cy,33,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 25; ctx.shadowColor = "#0ff";
+    ctx.beginPath(); ctx.arc(cx-120,cy,34,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.moveTo(cx-145,cy-20); ctx.lineTo(cx-75,cy+30); ctx.stroke();
 
     // Enemy
-    let hpP = Math.max(0, enemyHP/getEnemyHP());
     ctx.fillStyle = "#c22";
-    ctx.beginPath(); ctx.arc(cx+130,cy,50,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 15; ctx.shadowColor = "#f00";
+    ctx.beginPath(); ctx.arc(cx+140,cy,52,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.fillRect(cx+120,cy-15,14,14); ctx.fillRect(cx+155,cy-15,14,14);
+    ctx.fillStyle = "#000"; ctx.fillRect(cx+123,cy-12,8,8); ctx.fillRect(cx+158,cy-12,8,8);
 
-    ctx.fillStyle = "#222";
-    ctx.fillRect(cx+70,cy-85,200,20);
-    ctx.fillStyle = hpP>0.5?"#0f0":"#f00";
-    ctx.fillRect(cx+70,cy-85,200*hpP,20);
+    // HP Bar
+    let hpP = Math.max(0, enemyHP / getEnemyHP());
+    ctx.fillStyle = "#111"; ctx.fillRect(cx+70,cy-95,240,28);
+    ctx.fillStyle = hpP > 0.4 ? "#0f0" : "#f00";
+    ctx.fillRect(cx+70,cy-95,240*hpP,28);
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 4; ctx.strokeRect(cx+70,cy-95,240,28);
+    ctx.fillStyle = "#fff"; ctx.font = "bold 18px Arial"; ctx.fillText("Wave " + game.wave, cx+80, cy-73);
 
     // Particles
-    for (let i=particles.length-1;i>=0;i--) {
+    for (let i = particles.length-1; i >= 0; i--) {
         let p = particles[i];
-        ctx.globalAlpha = p.life/30;
+        ctx.globalAlpha = p.life / 60;
         ctx.fillStyle = p.color;
-        ctx.font = "bold 20px Arial";
+        ctx.font = p.text.includes("ITEM") ? "bold 26px Arial" : "bold 22px Arial";
         ctx.fillText(p.text, p.x, p.y);
-        p.y -= 1.5;
+        p.y -= 1.8;
         p.life--;
-        if (p.life<=0) particles.splice(i,1);
+        if (p.life <= 0) particles.splice(i,1);
     }
     ctx.globalAlpha = 1;
 }
@@ -155,12 +182,22 @@ function gameLoop(ts) {
 }
 
 window.onload = () => {
+    loadGame();
+    handleOffline();
     canvas = document.getElementById("gameCanvas");
     ctx = canvas.getContext("2d");
-    window.addEventListener("resize", ()=>{canvas.width=window.innerWidth;canvas.height=window.innerHeight;});
+    window.addEventListener("resize", () => {canvas.width = innerWidth; canvas.height = innerHeight;});
     canvas.addEventListener("click", e => {
-        let rect = canvas.getBoundingClientRect();
-        handleClick(e.clientX - rect.left, e.clientY - rect.top);
+        let r = canvas.getBoundingClientRect();
+        handleClick(e.clientX - r.left, e.clientY - r.top);
     });
+    setInterval(saveGame, 8000);
     requestAnimationFrame(gameLoop);
 };
+
+function format(n) {
+    if (n >= 1e9) return (n/1e9).toFixed(2) + "B";
+    if (n >= 1e6) return (n/1e6).toFixed(2) + "M";
+    if (n >= 1e3) return (n/1e3).toFixed(1) + "K";
+    return Math.floor(n);
+}

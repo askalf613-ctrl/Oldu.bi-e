@@ -1,4 +1,4 @@
-// game.js
+// game.js - Master Logic & Scaling
 const WORLDS = [
     {id:0, name:"NEON SECTOR", multi:1, synergy: 1.1, color:"#00f2ff", req: 0},
     {id:1, name:"SILICON WASTES", multi:1e12, synergy: 2.0, color:"#ffd700", req: 1e15},
@@ -16,28 +16,54 @@ let game = {
 
 let enemyHP = 100, maxHP = 100, rotation = 0;
 
+// MATHEMATICS
 function getUpgradeCost(key) {
     const base = { damage: 10, gold: 20, speed: 100, crit: 500, double: 2000 };
-    return base[key] * Math.pow(1.45, game.shops[key]); // 300 saatlik scaling
+    return base[key] * Math.pow(1.5, game.shops[key]); // 300h Scaling
 }
 
 function getPrestigeCost(key) {
-    const base = { global: 1, auto: 10, worldSync: 20 };
-    return base[key] * Math.pow(4, game.prestigeShop[key]);
+    const base = { global: 1, auto: 15, worldSync: 30 };
+    return base[key] * Math.pow(5, game.prestigeShop[key]);
 }
 
 function getDPS() {
     let synergy = 1;
     game.worldProgress.forEach((v, i) => synergy *= (1 + v * 0.01 * (game.prestigeShop.worldSync + 1)));
-    let base = (10 + game.shops.damage * 8) * synergy;
+    let base = (10 + game.shops.damage * 10) * synergy;
     let pMult = Math.pow(10, game.prestigeShop.global);
-    return base * pMult * (1 + game.shops.speed * 0.15) * WORLDS[game.world].multi;
+    return base * pMult * (1 + game.shops.speed * 0.12) * WORLDS[game.world].multi;
 }
 
 function getEnemyMaxHP() {
-    return 100 * Math.pow(1.3, game.wave) * WORLDS[game.world].multi;
+    return 100 * Math.pow(1.35, game.wave) * WORLDS[game.world].multi;
 }
 
+// SAVE SYSTEM
+function saveGame() {
+    localStorage.setItem("cyberAscension_vFinal", JSON.stringify(game));
+    console.log("Progress Encrypted & Saved.");
+}
+
+function loadGame() {
+    const saved = localStorage.getItem("cyberAscension_vFinal");
+    if (saved) {
+        try {
+            const data = JSON.parse(saved);
+            game = { ...game, ...data };
+            console.log("Neural Link Established. Data Loaded.");
+        } catch(e) { console.error("Save Corrupted."); }
+    }
+}
+
+function resetGame() {
+    if(confirm("DANGER: This will wipe all neural data. Proceed?")) {
+        localStorage.removeItem("cyberAscension_vFinal");
+        location.reload();
+    }
+}
+
+// ENGINE
 function update(delta) {
     let dps = getDPS();
     enemyHP -= dps * (delta / 1000);
@@ -76,6 +102,8 @@ function draw() {
 window.onload = () => {
     let canvas = document.getElementById("gameCanvas");
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    loadGame();
     enemyHP = getEnemyMaxHP(); maxHP = enemyHP;
     setInterval(() => { update(16); draw(); updateUI(); }, 16);
+    setInterval(saveGame, 10000); // Auto-save every 10s
 };

@@ -2,311 +2,218 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>IDLE ARENA INDIE</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>IDLE ASCENSION</title>
 
 <style>
-
-/* ================= GLOBAL ================= */
-
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family: monospace;
-}
-
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
 body{
-    background:#05070d;
+    background:#000;
     overflow:hidden;
     color:white;
 }
 
-canvas{
+/* CANVAS */
+#gameCanvas{
     position:absolute;
     top:0;
     left:0;
-    z-index:1;
+    width:100vw;
+    height:100vh;
+    background:linear-gradient(#0a0a15,#000);
 }
 
-/* ================= BACKGROUND ================= */
+/* HUD */
+#hud{
+    position:absolute;
+    top:8px;
+    width:100%;
+    text-align:center;
+    font-size:13px;
+    z-index:10;
+    pointer-events:none;
+}
 
-#bgLayer{
+/* BOTTOM BAR */
+#bottomBar{
+    position:absolute;
+    bottom:0;
+    width:100%;
+    height:70px;
+    background:rgba(0,0,0,0.85);
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+    z-index:20;
+}
+
+.btn{
+    padding:6px 10px;
+    background:#111;
+    border:1px solid #444;
+    color:white;
+    font-size:12px;
+    border-radius:6px;
+}
+
+.btn:active{background:#333}
+
+/* MENU */
+#mainMenu{
     position:absolute;
     width:100%;
     height:100%;
-    background: radial-gradient(circle at center, #111827 0%, #030712 70%);
-    z-index:0;
-}
-
-/* ================= HUD ================= */
-
-#hud{
-    position:absolute;
-    top:10px;
-    left:10px;
-    z-index:10;
-    background:rgba(0,0,0,0.5);
-    padding:12px;
-    border-radius:10px;
-    min-width:200px;
-}
-
-.statRow{
-    margin-bottom:5px;
-    font-size:14px;
-}
-
-/* ================= TOP BUTTONS ================= */
-
-#topButtons{
-    position:absolute;
-    top:10px;
-    right:10px;
-    z-index:10;
+    background:#000;
     display:flex;
-    gap:10px;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    z-index:50;
 }
 
-button{
+.menuBox{
     background:#111;
-    border:1px solid #333;
-    color:white;
-    padding:8px 12px;
-    border-radius:6px;
-    cursor:pointer;
+    padding:20px;
+    border:1px solid #444;
+    width:90%;
+    max-width:400px;
 }
 
-button:hover{
-    background:#222;
+.menuBox h2{
+    text-align:center;
+    margin-bottom:10px;
 }
 
-/* ================= MODAL ================= */
+.menuStats{
+    font-size:13px;
+    margin-bottom:15px;
+    line-height:18px;
+}
 
+/* MODAL */
 .modal{
     position:absolute;
-    top:50%;
-    left:50%;
-    transform:translate(-50%,-50%);
-    width:90%;
-    max-width:700px;
-    height:80%;
-    background:#0f172a;
-    border:2px solid #334155;
-    border-radius:10px;
-    z-index:50;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.95);
     display:none;
     flex-direction:column;
+    z-index:60;
 }
 
 .modalHeader{
-    padding:15px;
-    border-bottom:1px solid #334155;
-    font-size:18px;
+    padding:10px;
+    text-align:center;
+    border-bottom:1px solid #333;
 }
 
 .modalContent{
     flex:1;
     overflow-y:auto;
-    padding:15px;
-}
-
-.modalFooter{
     padding:10px;
-    border-top:1px solid #334155;
-    text-align:right;
-}
-
-/* ================= BOOK CARD ================= */
-
-.bookCard{
-    background:#1e293b;
-    border:1px solid #334155;
-    padding:10px;
-    margin-bottom:10px;
-    border-radius:6px;
-}
-
-.bookTitle{
-    font-size:16px;
-    margin-bottom:5px;
-}
-
-.bookDesc{
     font-size:13px;
-    opacity:0.8;
 }
 
-/* rarity colors */
-
-.common{ border-left:4px solid gray; }
-.rare{ border-left:4px solid #3b82f6; }
-.epic{ border-left:4px solid #a855f7; }
-.legendary{ border-left:4px solid gold; }
-
-/* ================= SHOP ITEM ================= */
-
-.shopItem{
-    background:#111827;
-    border:1px solid #334155;
-    padding:10px;
-    margin-bottom:10px;
-    border-radius:6px;
-}
-
-.shopTitle{
-    font-size:15px;
-}
-
-.shopDesc{
-    font-size:12px;
-    opacity:0.7;
-}
-
-/* ================= ACHIEVEMENT ================= */
-
-.achievement{
-    background:#0f172a;
-    border:1px solid #334155;
-    padding:10px;
-    margin-bottom:10px;
-    border-radius:6px;
-}
-
-.progressBar{
+/* SAVE PANEL */
+#savePanel textarea{
     width:100%;
-    height:8px;
-    background:#1e293b;
-    border-radius:4px;
-    margin-top:5px;
+    height:80px;
+    background:#111;
+    color:white;
+    border:1px solid #444;
+    font-size:10px;
 }
-
-.progressFill{
-    height:8px;
-    background:#22c55e;
-    width:0%;
-    border-radius:4px;
-}
-
-/* ================= FLOATING DAMAGE ================= */
-
-#floatingTexts{
-    position:absolute;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    pointer-events:none;
-    z-index:20;
-}
-
-.floatingText{
-    position:absolute;
-    font-size:14px;
-    font-weight:bold;
-    animation:floatUp 1s forwards;
-}
-
-@keyframes floatUp{
-    0%{opacity:1; transform:translateY(0);}
-    100%{opacity:0; transform:translateY(-40px);}
-}
-
-/* ================= RESPONSIVE ================= */
-
-@media (max-width:600px){
-    #hud{
-        font-size:12px;
-    }
-    button{
-        padding:6px 8px;
-    }
-}
-
 </style>
 </head>
 <body>
 
-<div id="bgLayer"></div>
 <canvas id="gameCanvas"></canvas>
-<div id="floatingTexts"></div>
 
-<!-- ================= HUD ================= -->
-
+<!-- HUD -->
 <div id="hud">
-    <div class="statRow">Stage: <span id="uiStage">1</span></div>
-    <div class="statRow">Wave: <span id="uiWave">1</span></div>
-    <div class="statRow">Level: <span id="uiLevel">1</span></div>
-    <div class="statRow">XP: <span id="uiXP">0</span></div>
-    <div class="statRow">Gold: <span id="uiGold">0</span></div>
-    <div class="statRow">Souls: <span id="uiSouls">0</span></div>
-    <div class="statRow">Damage: <span id="uiDamage">0</span></div>
-    <div class="statRow">Attack Speed: <span id="uiSpeed">0</span></div>
-    <div class="statRow">Crit Chance: <span id="uiCrit">0%</span></div>
+Gold: <span id="goldText">0</span> |
+Level: <span id="levelText">1</span> |
+Wave: <span id="waveText">1</span> |
+DPS: <span id="dpsText">0</span>
 </div>
 
-<!-- ================= TOP BUTTONS ================= -->
-
-<div id="topButtons">
-    <button onclick="UI.openGoldShop()">Gold Shop</button>
-    <button onclick="UI.openRebirthShop()">Rebirth Shop</button>
-    <button onclick="UI.openAchievements()">Achievements</button>
-    <button onclick="UI.openCharacter()">Character</button>
-    <button onclick="UI.openBooks()">Books</button>
+<!-- BOTTOM BAR -->
+<div id="bottomBar">
+<button class="btn" onclick="openModal('goldShop')">Gold Shop</button>
+<button class="btn" onclick="openModal('prestigeShop')">Prestige</button>
+<button class="btn" onclick="openModal('items')">Items</button>
+<button class="btn" onclick="openModal('books')">Books</button>
+<button class="btn" onclick="openModal('menuStats')">Menu</button>
 </div>
 
-<!-- ================= GOLD SHOP ================= -->
-
-<div id="goldShop" class="modal">
-    <div class="modalHeader">Gold Shop (Run)</div>
-    <div class="modalContent" id="goldShopContent"></div>
-    <div class="modalFooter">
-        <button onclick="UI.closeAll()">Kapat</button>
-    </div>
+<!-- MAIN MENU -->
+<div id="mainMenu">
+<div class="menuBox">
+<h2>IDLE ASCENSION</h2>
+<div class="menuStats" id="menuStatsText">
+Yükleniyor...
+</div>
+<button class="btn" onclick="startGame()">PLAY</button>
+</div>
 </div>
 
-<!-- ================= REBIRTH SHOP ================= -->
-
-<div id="rebirthShop" class="modal">
-    <div class="modalHeader">Rebirth Shop (Permanent)</div>
-    <div class="modalContent" id="rebirthShopContent"></div>
-    <div class="modalFooter">
-        <button onclick="UI.closeAll()">Kapat</button>
-    </div>
+<!-- GOLD SHOP -->
+<div class="modal" id="goldShop">
+<div class="modalHeader">
+Gold Shop <button onclick="closeModal('goldShop')">X</button>
+</div>
+<div class="modalContent" id="goldShopContent"></div>
 </div>
 
-<!-- ================= ACHIEVEMENTS ================= -->
-
-<div id="achievementPanel" class="modal">
-    <div class="modalHeader">Achievements</div>
-    <div class="modalContent" id="achievementContent"></div>
-    <div class="modalFooter">
-        <button onclick="UI.closeAll()">Kapat</button>
-    </div>
+<!-- PRESTIGE SHOP -->
+<div class="modal" id="prestigeShop">
+<div class="modalHeader">
+Prestige Shop <button onclick="closeModal('prestigeShop')">X</button>
+</div>
+<div class="modalContent" id="prestigeShopContent"></div>
 </div>
 
-<!-- ================= CHARACTER PANEL ================= -->
-
-<div id="characterPanel" class="modal">
-    <div class="modalHeader">Character Select</div>
-    <div class="modalContent" id="characterContent"></div>
-    <div class="modalFooter">
-        <button onclick="UI.closeAll()">Kapat</button>
-    </div>
+<!-- ITEMS -->
+<div class="modal" id="items">
+<div class="modalHeader">
+Items <button onclick="closeModal('items')">X</button>
+</div>
+<div class="modalContent" id="itemsContent"></div>
 </div>
 
-<!-- ================= BOOK INVENTORY ================= -->
-
-<div id="bookPanel" class="modal">
-    <div class="modalHeader">Active Books</div>
-    <div class="modalContent" id="bookContent"></div>
-    <div class="modalFooter">
-        <button onclick="UI.closeAll()">Kapat</button>
-    </div>
+<!-- BOOKS -->
+<div class="modal" id="books">
+<div class="modalHeader">
+Books <button onclick="closeModal('books')">X</button>
+</div>
+<div class="modalContent" id="booksContent"></div>
 </div>
 
-<script src="ui.js"></script>
+<!-- MENU STATS + SAVE -->
+<div class="modal" id="menuStats">
+<div class="modalHeader">
+Profile & Save <button onclick="closeModal('menuStats')">X</button>
+</div>
+<div class="modalContent">
+
+<div id="profileStats"></div>
+
+<hr style="margin:10px 0;border:1px solid #222">
+
+<div id="savePanel">
+<button class="btn" onclick="manualSave()">Manual Save</button>
+<button class="btn" onclick="exportSave()">Export</button>
+<button class="btn" onclick="importSave()">Import</button>
+<button class="btn" onclick="resetSave()">Reset</button>
+
+<textarea id="saveData"></textarea>
+</div>
+
+</div>
+</div>
+
 <script src="game.js"></script>
+<script src="ui.js"></script>
 
 </body>
 </html>

@@ -1,110 +1,122 @@
-// ui.js - Interface Controller
+// ui.js
 function updateUI() {
     document.getElementById("goldText").innerText = format(game.gold);
-    document.getElementById("levelText").innerText = game.level;
     document.getElementById("waveText").innerText = game.wave;
+    document.getElementById("levelText").innerText = game.level;
     document.getElementById("dpsText").innerText = format(getDPS());
-    document.getElementById("speedText").innerText = Math.floor((1 + game.shops.speed * 0.1) * 100);
+    document.getElementById("xpBar").style.width = (game.xp / game.xpToNext * 100) + "%";
     
-    let xpPercent = (game.xp / game.xpToNext) * 100;
-    document.getElementById("xpBar").style.width = xpPercent + "%";
+    if (isBoss) {
+        document.getElementById("bossContainer").style.display = "block";
+        document.getElementById("bossBar").style.width = (bossTimer / 30 * 100) + "%";
+    } else {
+        document.getElementById("bossContainer").style.display = "none";
+    }
 }
 setInterval(updateUI, 100);
 
-function openModal(id) {
-    document.getElementById(id).style.display = "flex";
-    if(id === "goldShop") renderGoldShop();
-    if(id === "prestigeShop") renderPrestigeShop();
-    if(id === "worldModal") renderWorlds();
-}
-
-function closeModal(id) { document.getElementById(id).style.display = "none"; }
-
 function renderGoldShop() {
-    const upgrades = [
-        {id: "damage", name: "Laser Power", desc: "Base damage artışı"},
-        {id: "gold", name: "Data Mine", desc: "Altın kazanma çarpanı"},
-        {id: "speed", name: "Overclock", desc: "Saldırı hızı artışı"},
-        {id: "crit", name: "Critical Error", desc: "Kritik vuruş şansı"},
-    ];
     let html = "";
-    upgrades.forEach(u => {
-        let cost = getUpgradeCost(u.id);
-        html += `
-        <div class="shop-item">
-            <div><b>${u.name}</b> (Lv.${game.shops[u.id]})<br><small>${u.desc}</small></div>
-            <button class="btn" onclick="buyUpgrade('${u.id}')">${format(cost)} TB</button>
+    const list = [
+        {id:"damage", n:"NEURAL_STRIKE", d:"Temel hasarı %40 artırır"},
+        {id:"gold", n:"DATA_EXTRACT", d:"Kazanılan TB miktarını artırır"},
+        {id:"speed", n:"OVERCLOCK_V2", d:"Saldırı hızını %15 artırır"},
+        {id:"crit", n:"LOGIC_GATE", d:"Kritik vuruş şansı ekler"}
+    ];
+    list.forEach(i => {
+        html += `<div class="shop-item">
+            <div><b>${i.n}</b> [v${game.shops[i.id]}]<br><small>${i.d}</small></div>
+            <button class="btn" onclick="buyUpgrade('${i.id}')">${format(getUpgradeCost(i.id))}</button>
         </div>`;
     });
     document.getElementById("goldShopContent").innerHTML = html;
 }
 
-function buyUpgrade(id) {
-    let cost = getUpgradeCost(id);
-    if (game.gold >= cost) {
-        game.gold -= cost;
-        game.shops[id]++;
-        if(document.getElementById("goldShop").style.display === "flex") renderGoldShop();
-    }
-}
-
 function renderPrestigeShop() {
-    let prestigeGain = Math.floor(game.level / 20);
-    let html = `<div style="text-align:center; margin-bottom:20px;">
-        <h2 style="color:var(--neon-pink)">PRESTIGE CORES: ${game.prestigeCurrency}</h2>
-        <p>Reset atarsan kazanacağın: +${prestigeGain}</p>
-    </div>`;
-
-    html += `
-    <div class="shop-item">
-        <div><b>Global Multiplier</b><br><small>Tüm hasarı %50 katlar</small></div>
-        <button class="btn btn-prestige" onclick="buyPrestige('globalMulti', 1)">1 Core</button>
-    </div>
-    <div class="shop-item">
-        <div><b>Auto-Buyer System</b><br><small>Geliştirmeleri otomatik alır</small></div>
-        <button class="btn btn-prestige" onclick="buyPrestige('autoBuyerLevel', 5)">5 Cores</button>
-    </div>`;
+    let gain = Math.floor(game.maxWave / 10);
+    let html = `<div style="grid-column: 1/3; text-align:center; color:var(--neon-pink); margin-bottom:20px;">
+        <h2>CORES: ${game.prestigeCurrency}</h2><p>REBOOT KAZANCI: +${gain}</p></div>`;
     
+    const darkItems = [
+        {id:"globalMulti", n:"QUANTUM_CPU", d:"X3 GLOBAL HASAR", c:1},
+        {id:"autoBuyer", n:"ROOT_ACCESS", d:"OTO-GELİŞTİRME", c:10},
+        {id:"timeWarp", n:"TIME_BENDER", d:"OYUN HIZI +50%", c:5},
+        {id:"doubleDrop", n:"DUAL_STREAM", d:"X2 TB ŞANSI %10", c:8},
+        {id:"blackMarket", n:"GHOST_DRIVE", d:"KALICI X3 HASAR", c:15}
+    ];
+
+    darkItems.forEach(i => {
+        let cost = getPrestigeCost(i.id);
+        html += `<div class="shop-item" style="border-color:var(--neon-pink)">
+            <div><b>${i.n}</b> [Lv.${game.prestigeShop[i.id]}]<br><small>${i.d}</small></div>
+            <button class="btn btn-p" onclick="buyPrestige('${i.id}')">${cost} CORE</button>
+        </div>`;
+    });
     document.getElementById("prestigeShopContent").innerHTML = html;
 }
 
-function buyPrestige(id, cost) {
-    if (game.prestigeCurrency >= cost) {
-        game.prestigeCurrency -= cost;
-        game.prestigeShop[id]++;
-        renderPrestigeShop();
-    }
+function renderStats() {
+    let html = `
+        <div style="padding:20px; font-size:18px; line-height:2;">
+            <p>> MAX_NODE_REACHED: ${game.maxWave}</p>
+            <p>> TOTAL_REBOOTS: ${game.prestigeCount}</p>
+            <p>> CURRENT_OUTPUT: ${format(getDPS())} OPS/S</p>
+            <p>> SYSTEM_SPEED: ${((1 + game.prestigeShop.timeWarp * 0.2)*100).toFixed(0)}%</p>
+            <p>> DOUBLE_TB_CHANCE: ${game.prestigeShop.doubleDrop * 10}%</p>
+            <p>> GLOBAL_MULT: ${Math.pow(3, game.prestigeShop.globalMulti)}x</p>
+        </div>
+    `;
+    document.getElementById("statsContent").innerHTML = html;
+}
+
+function openModal(id) {
+    document.getElementById(id).style.display = "flex";
+    if(id === "goldShop") renderGoldShop();
+    if(id === "prestigeShop") renderPrestigeShop();
+    if(id === "statsModal") renderStats();
+    if(id === "worldModal") renderWorlds();
+}
+
+function closeModal(id) { document.getElementById(id).style.display = "none"; }
+
+function buyUpgrade(id) {
+    let cost = getUpgradeCost(id);
+    if(game.gold >= cost) { game.gold -= cost; game.shops[id]++; renderGoldShop(); }
+}
+
+function buyPrestige(id) {
+    let cost = getPrestigeCost(id);
+    if(game.prestigeCurrency >= cost) { game.prestigeCurrency -= cost; game.prestigeShop[id]++; renderPrestigeShop(); }
 }
 
 function tryPrestige() {
-    let gain = Math.floor(game.level / 20);
-    if (gain < 1) {
-        alert("Prestige için en az 20 Level lazım!");
-        return;
-    }
-    if (confirm("Tüm altın ve geliştirmeler sıfırlanacak. Hazır mısın?")) {
-        game.prestigeCurrency += gain;
-        game.prestigeCount++;
-        game.gold = 0;
-        game.level = 1;
-        game.wave = 1;
-        game.xp = 0;
-        game.shops = { damage: 0, gold: 0, speed: 0, crit: 0, idle: 0 };
-        spawnEnemy();
+    let gain = Math.floor(game.maxWave / 10);
+    if(gain < 1) return alert("HATA: Yeterli veri yok (Node 10+ gerekli)");
+    if(confirm("SİSTEMİ YENİDEN BAŞLAT? Tüm TB ve donanımlar sıfırlanacak.")){
+        game.prestigeCurrency += gain; game.prestigeCount++;
+        game.gold = 0; game.wave = 1; game.shops = {damage:0, gold:0, speed:0, crit:0};
+        spawnEnemy(); closeModal('prestigeShop');
     }
 }
 
 function renderWorlds() {
     let html = "";
     WORLDS.forEach(w => {
-        let locked = game.level < w.unlockLevel;
-        html += `
-        <div class="shop-item" style="border-color:${w.color}; opacity:${locked ? 0.5 : 1}">
-            <div><b style="color:${w.color}">${w.name}</b><br><small>${w.multi}x Multiplier</small></div>
-            <button class="btn" ${locked ? 'disabled' : `onclick="game.world=${w.id};closeModal('worldModal')"`}>
-                ${locked ? 'LOCKED (Lv.'+w.unlockLevel+')' : 'CONNECT'}
+        let lock = game.level < (w.id * 100 + 1);
+        html += `<div class="shop-item" style="border-color:${w.color}; opacity:${lock ? 0.3 : 1}">
+            <div><b>${w.name}</b><br><small>X${w.multi} DATA</small></div>
+            <button class="btn" ${lock ? 'disabled' : `onclick="game.world=${w.id};closeModal('worldModal')"`}>
+                ${lock ? 'LOCKED' : 'CONNECT'}
             </button>
         </div>`;
     });
     document.getElementById("worldContent").innerHTML = html;
+}
+
+function format(n) {
+    if (n >= 1e12) return (n/1e12).toFixed(2) + " PB";
+    if (n >= 1e9) return (n/1e9).toFixed(2) + " GB";
+    if (n >= 1e6) return (n/1e6).toFixed(2) + " MB";
+    if (n >= 1e3) return (n/1e3).toFixed(1) + " KB";
+    return Math.floor(n);
 }

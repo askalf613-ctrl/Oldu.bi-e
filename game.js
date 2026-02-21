@@ -1,176 +1,146 @@
-// game.js - Cyber Engine
-const SAVE_VERSION = 11;
-
+// game.js
 const WORLDS = [
-    {id:0, name:"NEON CITY", multi:1, unlockLevel:1, color:"#00f2ff"},
-    {id:1, name:"CYBER CORE", multi:15, unlockLevel:100, color:"#ff00ff"},
-    {id:2, name:"THE VOID NET", multi:200, unlockLevel:500, color:"#7000ff"}
+    {id:0, name:"NEON SUBURBS", multi:1, color:"#00f2ff"},
+    {id:1, name:"THE MAINFRAME", multi:50, color:"#ff00ff"},
+    {id:2, name:"VOID PROTOCOL", multi:1000, color:"#39ff14"}
 ];
 
 let game = {
-    gold: 0,
-    level: 1,
-    wave: 1,
-    world: 0,
-    xp: 0,
-    xpToNext: 100,
-    prestigeCurrency: 0,
-    prestigeCount: 0,
-    // A: Auto-Buyer kontrolü
-    autoBuyerActive: false,
-    shops: { damage: 0, gold: 0, speed: 0, crit: 0, idle: 0 },
-    prestigeShop: { globalMulti: 0, autoBuyerLevel: 0, startWave: 0 },
-    lastSaveTime: Date.now()
+    gold: 0, level: 1, wave: 1, world: 0, xp: 0, xpToNext: 100,
+    prestigeCurrency: 0, prestigeCount: 0, maxWave: 1,
+    shops: { damage: 0, gold: 0, speed: 0, crit: 0 },
+    prestigeShop: { 
+        globalMulti: 0, 
+        autoBuyer: 0, 
+        timeWarp: 0,   // OYUN HIZI ARTIRICI
+        doubleDrop: 0, // 2X ALTIN ŞANSI
+        blackMarket: 0 // KALICI HASAR ÇARPANI
+    }
 };
 
 let enemyHP = 100;
-let bossTimer = 0;
+let bossTimer = 30;
 let isBoss = false;
-let particles = [];
 let canvas, ctx;
+let rotation = 0;
+let matrixParticles = [];
 
-// Üstel Fiyat Hesaplama (Exponential Scaling)
 function getUpgradeCost(key) {
-    const baseCosts = { damage: 10, gold: 15, speed: 50, crit: 100, idle: 200 };
-    const scales = { damage: 1.15, gold: 1.16, speed: 1.2, crit: 1.3, idle: 1.25 };
-    return Math.floor(baseCosts[key] * Math.pow(scales[key], game.shops[key]));
+    const base = { damage: 10, gold: 25, speed: 100, crit: 500 };
+    return Math.floor(base[key] * Math.pow(1.15, game.shops[key]));
 }
 
-function getDamage() {
-    let base = 5 * (1 + game.shops.damage * 0.25) * Math.pow(1.5, game.prestigeShop.globalMulti);
-    return base * WORLDS[game.world].multi;
+function getPrestigeCost(key) {
+    const base = { globalMulti: 1, autoBuyer: 10, timeWarp: 5, doubleDrop: 8, blackMarket: 15 };
+    return Math.floor(base[key] * Math.pow(2.2, game.prestigeShop[key]));
 }
 
 function getDPS() {
-    let critChance = Math.min(0.8, 0.05 + game.shops.crit * 0.02);
-    let attackSpeed = 1 + game.shops.speed * 0.1;
-    let baseDmg = getDamage();
-    return baseDmg * (1 + critChance * 2) * attackSpeed;
+    // İllegal geliştirmeler hasarı devasa artırır
+    let pMulti = Math.pow(3, game.prestigeShop.globalMulti);
+    let bmMulti = 1 + (game.prestigeShop.blackMarket * 2);
+    let base = 15 * (1 + game.shops.damage * 0.4) * pMulti * bmMulti;
+    
+    let speed = (1 + game.shops.speed * 0.15) * (1 + game.prestigeShop.timeWarp * 0.5);
+    let critChance = Math.min(0.9, 0.05 + game.shops.crit * 0.03);
+    
+    return base * speed * (1 + critChance * 5) * WORLDS[game.world].multi;
+}
+
+function update(delta) {
+    // Oyun hızı (Time Warp) delta'yı etkiler
+    let speedFactor = 1 + (game.prestigeShop.timeWarp * 0.2);
+    let actualDelta = delta * speedFactor;
+
+    enemyHP -= getDPS() * (actualDelta / 1000);
+    rotation += 0.03 * speedFactor;
+
+    if (isBoss) {
+        bossTimer -= actualDelta / 1000;
+        if (bossTimer <= 0) { game.wave--; spawnEnemy(); }
+    }
+
+    if (enemyHP <= 0) {
+        let goldGain = getEnemyMaxHP() * 0.5 * (1 + game.shops.gold * 0.3);
+        // Double Drop Şansı
+        if (Math.random() < game.prestigeShop.doubleDrop * 0.1) goldGain *= 2;
+        
+        game.gold += Math.floor(goldGain);
+        game.xp += 30;
+        if (game.xp >= game.xpToNext) { game.level++; game.xp = 0; game.xpToNext *= 1.3; }
+        
+        game.wave++;
+        if (game.wave > game.maxWave) game.maxWave = game.wave;
+        spawnEnemy();
+    }
+
+    // Auto Buyer
+    if (game.prestigeShop.autoBuyer > 0) {
+        for (let k in game.shops) if (game.gold >= getUpgradeCost(k)) buyUpgrade(k);
+    }
 }
 
 function getEnemyMaxHP() {
-    let base = 50 * Math.pow(1.14, game.wave);
-    if (game.wave % 10 === 0) return base * 5; // Boss HP
-    return base;
+    return 80 * Math.pow(1.18, game.wave);
 }
 
 function spawnEnemy() {
     isBoss = game.wave % 10 === 0;
-    if (isBoss) {
-        bossTimer = 30 * 60; // 30 saniye (60fps)
-        document.getElementById("bossTimerContainer").style.display = "block";
-    } else {
-        document.getElementById("bossTimerContainer").style.display = "none";
-    }
-    enemyHP = getEnemyMaxHP();
+    bossTimer = 30;
+    enemyHP = isBoss ? getEnemyMaxHP() * 8 : getEnemyMaxHP();
 }
 
-function update(delta) {
-    // Otomatik Hasar
-    let dps = getDPS();
-    enemyHP -= dps * (delta / 1000);
-
-    // Boss Zaman Kontrolü
-    if (isBoss) {
-        bossTimer--;
-        let percent = (bossTimer / (30 * 60)) * 100;
-        document.getElementById("bossTimerBar").style.width = percent + "%";
-        if (bossTimer <= 0) {
-            game.wave -= 1; // Boss geçilemedi, geri çekil
-            spawnEnemy();
-        }
+// Matrix Arka Plan Efekti
+function drawMatrix() {
+    if (matrixParticles.length < 50) {
+        matrixParticles.push({ x: Math.random()*canvas.width, y: -20, s: Math.random()*3+1 });
     }
-
-    // Düşman Ölümü
-    if (enemyHP <= 0) {
-        let reward = Math.floor(getEnemyMaxHP() * 0.5 * (1 + game.shops.gold * 0.2));
-        game.gold += reward;
-        game.xp += 20;
-        
-        if (game.xp >= game.xpToNext) {
-            game.level++;
-            game.xp = 0;
-            game.xpToNext = Math.floor(game.xpToNext * 1.2);
-        }
-
-        game.wave++;
-        spawnEnemy();
-        createExplosion();
-    }
-
-    // A: Auto-Buyer Mantığı
-    if (game.prestigeShop.autoBuyerLevel > 0) {
-        let keys = Object.keys(game.shops);
-        keys.forEach(k => {
-            if (game.gold >= getUpgradeCost(k)) {
-                buyUpgrade(k);
-            }
-        });
-    }
-}
-
-function createExplosion() {
-    for(let i=0; i<8; i++) {
-        particles.push({
-            x: canvas.width/2 + 150, y: canvas.height/2,
-            vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10,
-            life: 30, color: WORLDS[game.world].color
-        });
-    }
-}
-
-function draw() {
-    ctx.fillStyle = "#05050a";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    let cx = canvas.width/2;
-    let cy = canvas.height/2;
-
-    // Grid Arka Plan
-    ctx.strokeStyle = "#111";
-    ctx.lineWidth = 1;
-    for(let i=0; i<canvas.width; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
-    for(let i=0; i<canvas.height; i+=50) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
-
-    // Düşman Çizimi (Cyber Sphere)
-    ctx.shadowBlur = isBoss ? 30 : 15;
-    ctx.shadowColor = isBoss ? "#ff00ff" : WORLDS[game.world].color;
-    ctx.fillStyle = ctx.shadowColor;
-    ctx.beginPath();
-    ctx.arc(cx + 150, cy, isBoss ? 70 : 50, 0, Math.PI*2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // Parçacıklar
-    particles.forEach((p, i) => {
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, 4, 4);
-        p.x += p.vx; p.y += p.vy; p.life--;
-        if(p.life <= 0) particles.splice(i, 1);
+    ctx.fillStyle = "rgba(0, 255, 0, 0.15)";
+    ctx.font = "10px monospace";
+    matrixParticles.forEach((p, i) => {
+        ctx.fillText(Math.random() > 0.5 ? "1" : "0", p.x, p.y);
+        p.y += p.s;
+        if (p.y > canvas.height) matrixParticles.splice(i, 1);
     });
 }
 
-function gameLoop(ts) {
-    let delta = ts - (window.lastTs || ts);
-    window.lastTs = ts;
-    update(delta);
-    draw();
-    requestAnimationFrame(gameLoop);
+function draw() {
+    ctx.fillStyle = "#020205";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawMatrix();
+
+    let cx = canvas.width/2, cy = canvas.height/2;
+
+    // Cyber Core (Gelişmiş)
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation);
+    
+    for(let i=0; i<4; i++) {
+        ctx.strokeStyle = i % 2 === 0 ? var(--neon-blue) : var(--neon-pink);
+        ctx.lineWidth = 2;
+        ctx.rotate(Math.PI / 2);
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = ctx.strokeStyle;
+        ctx.strokeRect(-70 - i*5, -70 - i*5, 140 + i*10, 140 + i*10);
+    }
+    ctx.restore();
+
+    // HP Bar UI
+    let perc = Math.max(0, enemyHP / (isBoss ? getEnemyMaxHP()*8 : getEnemyMaxHP()));
+    ctx.fillStyle = "#111"; ctx.fillRect(cx - 200, cy + 150, 400, 15);
+    ctx.fillStyle = isBoss ? var(--neon-pink) : var(--neon-blue);
+    ctx.fillRect(cx - 200, cy + 150, 400 * perc, 15);
 }
+
+const var = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 window.onload = () => {
     canvas = document.getElementById("gameCanvas");
     ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     spawnEnemy();
-    requestAnimationFrame(gameLoop);
+    requestAnimationFrame(function loop(ts) {
+        update(16); draw(); requestAnimationFrame(loop);
+    });
 };
-
-function format(n) {
-    if (n >= 1e12) return (n/1e12).toFixed(2) + "Q";
-    if (n >= 1e9) return (n/1e9).toFixed(2) + "B";
-    if (n >= 1e6) return (n/1e6).toFixed(2) + "M";
-    if (n >= 1e3) return (n/1e3).toFixed(1) + "K";
-    return Math.floor(n);
-}

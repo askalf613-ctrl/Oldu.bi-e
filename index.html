@@ -3,93 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBER ASCENSION: DARK WEB</title>
+    <title>CYBER ASCENSION: THE MULTIVERSE</title>
     <style>
-        :root { --neon-blue: #00f2ff; --neon-pink: #ff00ff; --neon-green: #39ff14; --bg: #020205; }
+        :root { --blue: #00f2ff; --pink: #ff00ff; --green: #39ff14; --gold: #ffd700; --bg: #020205; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Consolas', monospace; }
         body { background: var(--bg); color: #fff; overflow: hidden; }
         
-        /* Floating HUD */
-        #hud {
-            position: absolute; top: 20px; width: 100%; text-align: center; z-index: 10;
-            pointer-events: none; text-transform: uppercase;
-        }
-        .main-val { font-size: 35px; color: var(--neon-blue); text-shadow: 0 0 20px var(--neon-blue); }
-        .sub-stats { font-size: 14px; color: var(--neon-pink); letter-spacing: 2px; }
+        #hud { position: absolute; top: 10px; width: 100%; text-align: center; z-index: 10; pointer-events: none; }
+        .currency-box { font-size: 32px; color: var(--gold); text-shadow: 0 0 15px var(--gold); margin-bottom: 5px; }
+        .world-info { font-size: 14px; color: var(--blue); letter-spacing: 1px; }
 
-        /* Progress Bars */
-        .bar-wrap { width: 400px; height: 8px; background: #111; margin: 10px auto; border: 1px solid #333; position: relative; }
-        #xpBar { width: 0%; height: 100%; background: var(--neon-green); box-shadow: 0 0 15px var(--neon-green); transition: 0.3s; }
-        #bossBar { width: 100%; height: 100%; background: var(--neon-pink); box-shadow: 0 0 15px var(--neon-pink); display: none; }
-
-        /* Control Panel */
+        .progress-bar { width: 450px; height: 10px; background: #111; margin: 8px auto; border: 1px solid #333; position: relative; border-radius: 5px; }
+        #hpBar { width: 100%; height: 100%; background: linear-gradient(90deg, #ff0000, #ff00ff); transition: 0.1s; }
+        
         #bottomBar {
-            position: absolute; bottom: 0; width: 100%; height: 110px;
-            background: rgba(0, 0, 0, 0.9); display: flex; justify-content: center; gap: 15px;
-            border-top: 1px solid var(--neon-blue); z-index: 20; align-items: center;
+            position: absolute; bottom: 0; width: 100%; height: 120px;
+            background: rgba(0, 0, 0, 0.95); display: flex; justify-content: center; gap: 10px;
+            border-top: 2px solid var(--blue); z-index: 20; align-items: center; padding: 0 20px;
         }
         .btn {
-            padding: 12px 25px; background: transparent; border: 1px solid var(--neon-blue);
-            color: var(--neon-blue); cursor: pointer; font-size: 12px; font-weight: bold;
-            transition: 0.2s; position: relative; overflow: hidden;
+            padding: 10px 15px; background: #000; border: 1px solid var(--blue);
+            color: var(--blue); cursor: pointer; font-size: 11px; font-weight: bold;
+            transition: 0.2s; border-radius: 4px; flex: 1; max-width: 150px;
         }
-        .btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
-        .btn-p { border-color: var(--neon-pink); color: var(--neon-pink); }
-        .btn-p:hover { background: var(--neon-pink); color: #000; box-shadow: 0 0 20px var(--neon-pink); }
+        .btn:hover { background: var(--blue); color: #000; box-shadow: 0 0 20px var(--blue); }
+        .btn-p { border-color: var(--pink); color: var(--pink); }
+        .btn-p:hover { background: var(--pink); color: #000; box-shadow: 0 0 20px var(--pink); }
 
-        /* Modal Redesign */
         .modal {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
-            display: none; flex-direction: column; z-index: 100; padding: 40px;
-            border: 2px solid var(--neon-blue); margin: 20px; border-radius: 20px;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.98);
+            display: none; flex-direction: column; z-index: 100; padding: 30px;
         }
-        .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; overflow-y: auto; }
         .shop-item {
-            background: #0a0a15; border: 1px solid #222; padding: 20px;
-            display: flex; justify-content: space-between; align-items: center;
-            border-radius: 10px; transition: 0.3s;
+            background: #0a0a15; border: 1px solid #222; padding: 15px;
+            display: flex; justify-content: space-between; align-items: center; border-radius: 8px;
         }
-        .shop-item:hover { border-color: var(--neon-blue); background: #0f0f25; }
+        .close-btn { position: absolute; top: 20px; right: 20px; padding: 10px 20px; }
     </style>
 </head>
 <body>
 
 <div id="hud">
-    <div class="main-val"><span id="goldText">0</span> TB</div>
-    <div class="sub-stats">NODE: <span id="waveText">1</span> | LEVEL: <span id="levelText">1</span></div>
-    <div class="bar-wrap"><div id="xpBar"></div></div>
-    <div class="bar-wrap" id="bossContainer" style="display:none;"><div id="bossBar"></div></div>
-    <div id="dpsDisplay" style="font-size: 12px; opacity: 0.7;">[ SYSTEM LOAD: <span id="dpsText">0</span> OPS/S ]</div>
+    <div class="currency-box"><span id="goldText">0</span> DATA</div>
+    <div class="world-info">WORLD: <span id="worldNameText">NEON CITY</span> | NODE: <span id="waveText">1</span></div>
+    <div class="progress-bar"><div id="hpBar"></div></div>
+    <div style="font-size: 12px; opacity: 0.8; color: var(--green);">DPS: <span id="dpsText">0</span> | PRESTIGE CORES: <span id="coreText">0</span></div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
 
 <div id="bottomBar">
-    <button class="btn" onclick="openModal('goldShop')">UPGRADES</button>
-    <button class="btn btn-p" onclick="openModal('prestigeShop')">DARK WEB (PRESTIGE)</button>
-    <button class="btn" onclick="openModal('statsModal')">SYS DATA</button>
-    <button class="btn" onclick="openModal('worldModal')">NET MAP</button>
-    <button class="btn btn-p" onclick="tryPrestige()">INITIALIZE REBOOT</button>
+    <button class="btn" onclick="openModal('goldShop')">BASE UPGRADES</button>
+    <button class="btn btn-p" onclick="openModal('prestigeShop')">ASCENSION SHOP</button>
+    <button class="btn" style="border-color: var(--green); color: var(--green);" onclick="openModal('worldModal')">MULTIVERSE MAP</button>
+    <button class="btn" onclick="openModal('statsModal')">STATISTICS</button>
+    <button class="btn btn-p" onclick="tryPrestige()">ASCEND NOW</button>
 </div>
 
 <div id="goldShop" class="modal">
-    <div style="display:flex; justify-content:space-between; margin-bottom: 20px;"><h2>CORE OVERCLOCK</h2><button class="btn" onclick="closeModal('goldShop')">CLOSE</button></div>
+    <button class="btn close-btn" onclick="closeModal('goldShop')">BACK TO HUD</button>
+    <h2>HARDWARE UPGRADES</h2><br>
     <div id="goldShopContent" class="shop-grid"></div>
 </div>
 
 <div id="prestigeShop" class="modal">
-    <div style="display:flex; justify-content:space-between; margin-bottom: 20px;"><h2>ENCRYPTED DATA MARKET</h2><button class="btn" onclick="closeModal('prestigeShop')">CLOSE</button></div>
+    <button class="btn close-btn" onclick="closeModal('prestigeShop')">BACK TO HUD</button>
+    <h2>ANCIENT ALGORITHMS</h2><br>
     <div id="prestigeShopContent" class="shop-grid"></div>
 </div>
 
-<div id="statsModal" class="modal">
-    <div style="display:flex; justify-content:space-between; margin-bottom: 20px;"><h2>HARDWARE STATISTICS</h2><button class="btn" onclick="closeModal('statsModal')">CLOSE</button></div>
-    <div id="statsContent" class="modal-content"></div>
+<div id="worldModal" class="modal">
+    <button class="btn close-btn" onclick="closeModal('worldModal')">BACK TO HUD</button>
+    <h2>WORLD MAP (SYNERGY ACTIVE)</h2><br>
+    <div id="worldContent" class="shop-grid"></div>
 </div>
 
-<div id="worldModal" class="modal">
-    <div style="display:flex; justify-content:space-between; margin-bottom: 20px;"><h2>WORLD ACCESS</h2><button class="btn" onclick="closeModal('worldModal')">CLOSE</button></div>
-    <div id="worldContent" class="shop-grid"></div>
+<div id="statsModal" class="modal">
+    <button class="btn close-btn" onclick="closeModal('statsModal')">BACK TO HUD</button>
+    <h2>SYSTEM DATA</h2><br>
+    <div id="statsContent"></div>
 </div>
 
 <script src="game.js"></script>

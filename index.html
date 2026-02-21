@@ -1,47 +1,93 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IDLE ASCENSION</title>
-<style>
-    *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
-    body{background:#0a0a15;color:#fff;overflow:hidden}
-    canvas{position:absolute;top:0;left:0;width:100%;height:100%}
-    #hud{position:absolute;top:10px;width:100%;text-align:center;font-size:17px;z-index:10;text-shadow:0 0 12px #000}
-    #bottomBar{position:absolute;bottom:0;width:100%;height:82px;background:rgba(0,0,0,0.92);display:flex;justify-content:space-around;align-items:center;z-index:20;border-top:3px solid #444}
-    .btn{padding:13px 22px;background:#1f1f2e;border:2px solid #555;color:#fff;border-radius:12px;font-size:14px;cursor:pointer}
-    .btn:active{transform:scale(0.94)}
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,0.97);display:none;flex-direction:column;z-index:100}
-    .modalHeader{padding:20px;text-align:center;border-bottom:1px solid #444;font-size:21px;display:flex;justify-content:space-between;align-items:center}
-    .modalContent{flex:1;overflow-y:auto;padding:15px}
-    .shop-item{margin:12px 0;padding:16px;background:#111;border:1px solid #555;border-radius:12px;display:flex;justify-content:space-between;align-items:center}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER ASCENSION: IDLE</title>
+    <style>
+        :root { --neon-blue: #00f2ff; --neon-pink: #ff00ff; --bg-dark: #05050a; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body { background: var(--bg-dark); color: #fff; overflow: hidden; user-select: none; }
+        
+        #game-container { position: relative; width: 100vw; height: 100vh; }
+        canvas { display: block; }
+
+        /* HUD & UI */
+        #hud {
+            position: absolute; top: 20px; width: 100%; text-align: center;
+            z-index: 10; pointer-events: none;
+        }
+        .stats-top { font-size: 24px; font-weight: bold; text-shadow: 0 0 10px var(--neon-blue); margin-bottom: 10px; }
+        .progress-container { width: 300px; height: 10px; background: #111; margin: 5px auto; border: 1px solid #333; border-radius: 5px; overflow: hidden; }
+        #xpBar { width: 0%; height: 100%; background: var(--neon-blue); transition: width 0.2s; }
+        #bossTimerBar { width: 100%; height: 100%; background: var(--neon-pink); display: none; }
+
+        /* Alt Panel */
+        #bottomBar {
+            position: absolute; bottom: 0; width: 100%; height: 90px;
+            background: rgba(10, 10, 20, 0.95); display: flex;
+            justify-content: center; align-items: center; gap: 15px;
+            border-top: 2px solid #222; z-index: 20;
+        }
+        .btn {
+            padding: 12px 20px; background: #151525; border: 1px solid var(--neon-blue);
+            color: #fff; border-radius: 8px; cursor: pointer; font-weight: bold;
+            transition: 0.3s; text-transform: uppercase; font-size: 12px;
+        }
+        .btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 15px var(--neon-blue); }
+        .btn-prestige { border-color: var(--neon-pink); color: var(--neon-pink); }
+        .btn-prestige:hover { background: var(--neon-pink); color: #000; box-shadow: 0 0 15px var(--neon-pink); }
+
+        /* Modallar */
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+            display: none; flex-direction: column; z-index: 100; padding: 20px;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
+        .modal-content { flex: 1; overflow-y: auto; }
+        .shop-item {
+            background: #111; border: 1px solid #222; padding: 15px;
+            margin-bottom: 10px; border-radius: 10px; display: flex;
+            justify-content: space-between; align-items: center;
+        }
+        .close-btn { background: none; border: none; color: #fff; font-size: 30px; cursor: pointer; }
+    </style>
 </head>
 <body>
 
-<canvas id="gameCanvas"></canvas>
+<div id="game-container">
+    <div id="hud">
+        <div class="stats-top">DATA: <span id="goldText">0</span> TB</div>
+        <div style="font-size: 14px; color: var(--neon-blue);">LEVEL <span id="levelText">1</span> | WAVE <span id="waveText">1</span></div>
+        <div class="progress-container"><div id="xpBar"></div></div>
+        <div class="progress-container" id="bossTimerContainer" style="display:none;"><div id="bossTimerBar"></div></div>
+        <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">OPS/s: <span id="dpsText">0</span> | SPEED: <span id="speedText">100</span>%</div>
+    </div>
 
-<div id="hud">
-    Gold: <span id="goldText">0</span> | 
-    Level: <span id="levelText">1</span> | 
-    Wave: <span id="waveText">1</span> | 
-    DPS: <span id="dpsText">0</span> | 
-    Combo: <span id="comboText">0x</span>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="bottomBar">
+        <button class="btn" onclick="openModal('goldShop')">⚙️ CORE UPGRADES</button>
+        <button class="btn btn-prestige" onclick="openModal('prestigeShop')">💎 ASCENSION</button>
+        <button class="btn" onclick="openModal('worldModal')">🌐 NETWORK</button>
+        <button class="btn" onclick="tryPrestige()">RESET & ASCEND</button>
+    </div>
 </div>
 
-<div id="bottomBar">
-    <button class="btn" onclick="openModal('goldShop')">🏪 Gold Shop</button>
-    <button class="btn" onclick="openModal('prestigeShop')">⭐ Prestige Shop</button>
-    <button class="btn" onclick="openModal('itemsModal')">🎒 Items</button>
-    <button class="btn" onclick="openModal('worldModal')">🌍 Worlds</button>
-    <button class="btn" onclick="tryPrestige()">Prestige Reset</button>
+<div id="goldShop" class="modal">
+    <div class="modal-header"><h2>CORE UPGRADES</h2><button class="close-btn" onclick="closeModal('goldShop')">×</button></div>
+    <div id="goldShopContent" class="modal-content"></div>
 </div>
 
-<div class="modal" id="goldShop"><div class="modalHeader">Gold Shop <button onclick="closeModal('goldShop')">✕</button></div><div id="goldShopContent" class="modalContent"></div></div>
-<div class="modal" id="prestigeShop"><div class="modalHeader">Prestige Shop <button onclick="closeModal('prestigeShop')">✕</button></div><div id="prestigeShopContent" class="modalContent"></div></div>
-<div class="modal" id="itemsModal"><div class="modalHeader">Envanter <button onclick="closeModal('itemsModal')">✕</button></div><div id="itemsContent" class="modalContent"></div></div>
-<div class="modal" id="worldModal"><div class="modalHeader">Worlds <button onclick="closeModal('worldModal')">✕</button></div><div id="worldContent" class="modalContent"></div></div>
+<div id="prestigeShop" class="modal">
+    <div class="modal-header"><h2>ASCENSION SHOP</h2><button class="close-btn" onclick="closeModal('prestigeShop')">×</button></div>
+    <div id="prestigeShopContent" class="modal-content"></div>
+</div>
+
+<div id="worldModal" class="modal">
+    <div class="modal-header"><h2>NETWORK NODES</h2><button class="close-btn" onclick="closeModal('worldModal')">×</button></div>
+    <div id="worldContent" class="modal-content"></div>
+</div>
 
 <script src="game.js"></script>
 <script src="ui.js"></script>

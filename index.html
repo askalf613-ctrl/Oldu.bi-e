@@ -3,71 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBER ASCENSION: FIXED</title>
+    <title>CYBER ASCENSION: CORE COORDINATION</title>
     <style>
         :root { --blue: #00f2ff; --pink: #ff00ff; --green: #39ff14; --gold: #ffd700; --bg: #020205; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Consolas', monospace; }
         body { background: var(--bg); color: #fff; overflow: hidden; }
         
         #hud { position: absolute; top: 10px; width: 100%; text-align: center; z-index: 10; pointer-events: none; }
-        .currency-box { font-size: 32px; color: var(--gold); text-shadow: 0 0 15px var(--gold); }
-        .progress-bar { width: 400px; height: 10px; background: #111; margin: 10px auto; border: 1px solid #333; position: relative; border-radius: 5px; overflow: hidden;}
-        #hpBar { width: 100%; height: 100%; background: linear-gradient(90deg, #f00, #f0f); transition: width 0.1s; }
+        .currency-box { font-size: 32px; color: var(--gold); text-shadow: 0 0 15px var(--gold); margin-bottom: 5px; }
+        
+        .progress-bar { width: 400px; height: 12px; background: #111; margin: 10px auto; border: 1px solid #333; position: relative; border-radius: 6px; overflow: hidden; }
+        #hpBar { width: 100%; height: 100%; background: linear-gradient(90deg, #ff0055, #ff00ff); transition: width 0.15s ease-out; }
         
         #bottomBar {
-            position: absolute; bottom: 0; width: 100%; height: 100px;
-            background: rgba(0, 0, 0, 0.9); display: flex; justify-content: center; gap: 10px;
-            border-top: 1px solid var(--blue); z-index: 20; align-items: center; padding: 0 10px;
+            position: absolute; bottom: 0; width: 100%; height: 110px;
+            background: rgba(0, 0, 0, 0.95); display: flex; justify-content: center; gap: 8px;
+            border-top: 2px solid var(--blue); z-index: 20; align-items: center; padding: 0 15px;
         }
         .btn {
-            padding: 10px; background: #000; border: 1px solid var(--blue);
-            color: var(--blue); cursor: pointer; font-size: 11px; font-weight: bold; flex: 1;
+            padding: 12px 5px; background: #080810; border: 1px solid var(--blue);
+            color: var(--blue); cursor: pointer; font-size: 10px; font-weight: bold; flex: 1;
+            text-transform: uppercase; letter-spacing: 1px;
         }
-        .btn:hover { background: var(--blue); color: #000; }
+        .btn:hover { background: var(--blue); color: #000; box-shadow: 0 0 15px var(--blue); }
         .btn-p { border-color: var(--pink); color: var(--pink); }
+        .btn-p:hover { background: var(--pink); color: #000; box-shadow: 0 0 15px var(--pink); }
 
         .modal {
             position: fixed; inset: 0; background: rgba(0,0,0,0.98);
-            display: none; flex-direction: column; z-index: 100; padding: 30px;
+            display: none; flex-direction: column; z-index: 100; padding: 40px;
         }
-        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; overflow-y: auto; }
+        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; overflow-y: auto; padding-bottom: 50px; }
         .shop-item {
-            background: #0a0a15; border: 1px solid #222; padding: 15px;
-            display: flex; justify-content: space-between; align-items: center; border-radius: 8px;
+            background: #0a0a1a; border: 1px solid #1a1a3a; padding: 20px;
+            display: flex; justify-content: space-between; align-items: center; border-radius: 10px;
         }
+        .close-btn { background: var(--pink); color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="hud">
-    <div class="currency-box"><span id="goldText">0</span> TB</div>
-    <div style="color: var(--blue)">WORLD: <span id="worldNameText">NEON</span> | NODE: <span id="waveText">1</span></div>
+    <div class="currency-box"><span id="goldText">0</span> DATA</div>
+    <div style="color: var(--blue)">SECTOR: <span id="worldNameText">NEON</span> | NODE: <span id="waveText">1</span></div>
     <div class="progress-bar"><div id="hpBar"></div></div>
-    <div style="font-size: 12px; color: var(--green);">DPS: <span id="dpsText">0</span> | CORES: <span id="coreText">0</span></div>
+    <div style="font-size: 13px; color: var(--green);">OUTPUT: <span id="dpsText">0</span> OPS/S | REBOOT CORES: <span id="coreText">0</span></div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
 
 <div id="bottomBar">
-    <button class="btn" onclick="openModal('goldShop')">UPGRADES</button>
-    <button class="btn btn-p" onclick="openModal('prestigeShop')">DARK MARKET</button>
+    <button class="btn" onclick="openModal('goldShop')">HARDWARE</button>
+    <button class="btn btn-p" onclick="openModal('prestigeShop')">CORE TECH</button>
     <button class="btn" onclick="openModal('worldModal')">NETWORKS</button>
-    <button class="btn" onclick="openModal('statsModal')">STATS</button>
-    <button class="btn btn-p" onclick="tryPrestige()">REBOOT</button>
+    <button class="btn" onclick="openModal('statsModal')">SYSTEM LOG</button>
+    <button class="btn btn-p" onclick="tryPrestige()">INITIALIZE REBOOT</button>
 </div>
 
 <div id="goldShop" class="modal">
-    <div style="display:flex; justify-content:space-between; margin-bottom:20px;"><h2>HARDWARE MARKET</h2><button class="btn" onclick="closeModal('goldShop')" style="max-width:100px">CLOSE</button></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
+        <h2>TERMINAL UPGRADES</h2>
+        <button class="close-btn" onclick="closeModal('goldShop')">X CLOSE</button>
+    </div>
     <div id="goldShopContent" class="shop-grid"></div>
 </div>
 
 <div id="prestigeShop" class="modal">
-    <div style="display:flex; justify-content:space-between; margin-bottom:20px;"><h2>ENCRYPTED DATA</h2><button class="btn" onclick="closeModal('prestigeShop')" style="max-width:100px">CLOSE</button></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
+        <h2>CORE ASCENSION MARKET</h2>
+        <button class="close-btn" onclick="closeModal('prestigeShop')">X CLOSE</button>
+    </div>
     <div id="prestigeShopContent" class="shop-grid"></div>
 </div>
 
-<div id="worldModal" class="modal"><div id="worldContent" class="shop-grid"></div><button class="btn" onclick="closeModal('worldModal')">CLOSE</button></div>
-<div id="statsModal" class="modal"><div id="statsContent"></div><button class="btn" onclick="closeModal('statsModal')">CLOSE</button></div>
+<div id="worldModal" class="modal"><div id="worldContent" class="shop-grid"></div><button class="btn" onclick="closeModal('worldModal')" style="margin-top:20px">CLOSE</button></div>
+<div id="statsModal" class="modal"><div id="statsContent" style="font-size:18px; line-height:2"></div><button class="btn" onclick="closeModal('statsModal')" style="margin-top:20px">CLOSE</button></div>
 
 <script src="game.js"></script>
 <script src="ui.js"></script>

@@ -1,41 +1,46 @@
-// game.js
+// game.js - Strategic Scaling Engine
 const WORLDS = [
-    {id:0, name:"NEON CITY", multi:1, synergy: 1, color:"#00f2ff", req: 0},
-    {id:1, name:"BIT-DESERT", multi:1e8, synergy: 5, color:"#ffd700", req: 1e12},
-    {id:2, name:"SILICON HELL", multi:1e18, synergy: 25, color:"#ff0000", req: 1e25}
+    {id:0, name:"NEON SECTOR", multi:1, synergy: 1.1, color:"#00f2ff", req: 0},
+    {id:1, name:"SILICON WASTES", multi:1e12, synergy: 2.5, color:"#ffd700", req: 1e15},
+    {id:2, name:"THE GRID CORE", multi:1e24, synergy: 10, color:"#ff0055", req: 1e30}
 ];
 
 let game = {
     gold: 0, wave: 1, world: 0, prestigeCurrency: 0, prestigeCount: 0, maxWave: 1,
-    shops: { damage: 0, gold: 0, speed: 0, crit: 0, double: 0 },
-    prestigeShop: { global: 0, auto: 0, multiplierBonus: 0, worldSynergy: 0 },
+    shops: { damage: 0, gold: 0, speed: 0, crit: 0, double: 0, multiProcess: 0 },
+    prestigeShop: { global: 0, auto: 0, multiBonus: 0, worldSync: 0, waveWarp: 0 },
     worldProgress: [0, 0, 0],
-    lastSave: Date.now()
+    rebootReq: 50 // Her reboot'ta bu sınır artacak
 };
 
 let enemyHP = 100, maxHP = 100, rotation = 0;
 
 function getUpgradeCost(key) {
-    const base = { damage: 10, gold: 20, speed: 100, crit: 500, double: 2000 };
-    return base[key] * Math.pow(1.15, game.shops[key]);
+    const base = { damage: 10, gold: 25, speed: 150, crit: 1000, double: 5000, multiProcess: 25000 };
+    // Scaling oranını 1.35'e çıkardım (Zorlaştırma)
+    return base[key] * Math.pow(1.35, game.shops[key]);
 }
 
 function getPrestigeCost(key) {
-    const base = { global: 1, auto: 10, multiplierBonus: 5, worldSynergy: 20 };
-    return base[key] * Math.pow(3, game.prestigeShop[key]);
+    const base = { global: 1, auto: 15, multiBonus: 10, worldSync: 25, waveWarp: 50 };
+    return base[key] * Math.pow(4, game.prestigeShop[key]); // Prestige dükkanı çok daha zor artar
 }
 
 function getDPS() {
-    let synergy = 1;
-    game.worldProgress.forEach((v, i) => synergy *= (1 + v * 0.1 * (game.prestigeShop.worldSynergy + 1)));
-    let base = (10 + game.shops.damage * 5) * synergy;
-    let speed = 1 + (game.shops.speed * 0.2);
-    let pMult = Math.pow(10, game.prestigeShop.global);
-    return base * speed * pMult * WORLDS[game.world].multi;
+    let syncBonus = 1;
+    game.worldProgress.forEach((v, i) => syncBonus *= (1 + v * 0.05 * (game.prestigeShop.worldSync + 1)));
+    
+    let base = (15 + game.shops.damage * 8) * syncBonus;
+    let speed = 1 + (game.shops.speed * 0.15);
+    let pMult = Math.pow(5, game.prestigeShop.global); // Hasar çarpanı dengelendi
+    let multiProc = 1 + (game.shops.multiProcess * 0.5);
+    
+    return base * speed * pMult * multiProc * WORLDS[game.world].multi;
 }
 
 function getEnemyMaxHP() {
-    return 100 * Math.pow(1.2, game.wave) * WORLDS[game.world].multi;
+    // Düşman canı wave başına daha sert artar
+    return 100 * Math.pow(1.3, game.wave) * WORLDS[game.world].multi;
 }
 
 function update(delta) {
@@ -43,19 +48,32 @@ function update(delta) {
     enemyHP -= dps * (delta / 1000);
 
     if (enemyHP <= 0) {
-        let gain = getEnemyMaxHP() * 0.5 * (1 + game.shops.gold * 0.5) * Math.pow(2, game.prestigeShop.multiplierBonus);
-        if (Math.random() < game.shops.double * 0.05) gain *= 2;
+        let goldBase = getEnemyMaxHP() * 0.35;
+        let goldMult = (1 + game.shops.gold * 0.4) * Math.pow(3, game.prestigeShop.multiBonus);
+        let gain = goldBase * goldMult;
+        
+        if (Math.random() < game.shops.double * 0.04) gain *= 2;
+        
         game.gold += gain;
-        game.wave++;
+        
+        // Wave Warp şansı (Prestige upgrade)
+        if (Math.random() < game.prestigeShop.waveWarp * 0.05) game.wave += 2;
+        else game.wave++;
+
         if (game.wave > game.maxWave) game.maxWave = game.wave;
         enemyHP = getEnemyMaxHP();
         maxHP = enemyHP;
     }
 
+    // Auto-Buyer (Idle Mekaniği)
     if (game.prestigeShop.auto > 0) {
         for(let k in game.shops) {
-            let c = getUpgradeCost(k);
-            if(game.gold >= c) { game.gold -= c; game.shops[k]++; game.worldProgress[game.world]++; }
+            let cost = getUpgradeCost(k);
+            if(game.gold >= cost) { 
+                game.gold -= cost; 
+                game.shops[k]++; 
+                game.worldProgress[game.world]++; 
+            }
         }
     }
     rotation += 0.02;
@@ -63,14 +81,22 @@ function update(delta) {
 
 function draw() {
     let canvas = document.getElementById("gameCanvas");
+    if(!canvas) return;
     let ctx = canvas.getContext("2d");
     ctx.fillStyle = "#020205"; ctx.fillRect(0,0,canvas.width,canvas.height);
     let cx = canvas.width/2, cy = canvas.height/2;
 
-    ctx.strokeStyle = WORLDS[game.world].color; ctx.lineWidth = 2;
+    // Koordinasyon Görseli (Core)
+    ctx.strokeStyle = WORLDS[game.world].color;
+    ctx.shadowBlur = 15; ctx.shadowColor = ctx.strokeStyle;
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(rotation);
-    for(let i=0; i<3; i++) { ctx.rotate(Math.PI/1.5); ctx.strokeRect(-50, -50, 100, 100); }
+    for(let i=0; i<4; i++) {
+        ctx.rotate(Math.PI/2);
+        ctx.strokeRect(-60, -60, 120, 120);
+        ctx.beginPath(); ctx.arc(0,0, 20 + i*10, 0, Math.PI/2); ctx.stroke();
+    }
     ctx.restore();
+    ctx.shadowBlur = 0;
 
     let hpPerc = Math.max(0, enemyHP / maxHP);
     document.getElementById("hpBar").style.width = (hpPerc * 100) + "%";
